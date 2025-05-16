@@ -1,0 +1,76 @@
+# GOYAS Metadata Workflow
+
+This workflow uses [Snakemake](https://snakemake.readthedocs.io/) to orchestrate a series of processing steps for metadata files and related data. The pipeline updates an XML file based on configuration settings, logs into Geonetwork, uploads metadata, adds coverage and content information, generates image snapshots from TIFF files, and publishes data.
+
+## Prerequisites
+
+- Python 3
+- Snakemake (install with `pip install snakemake`)
+- All required Python dependencies listed in [requirements.txt](requirements.txt)
+- Access to the Geonetwork and Geoserver endpoints
+
+## File Structure
+
+- **[config.yaml](config.yaml):** YAML configuration for the pipeline.
+- **[snakefile](snakefile):** Main Snakemake file containing the workflow rules.
+- **scripts/** directory contains various Python scripts:
+  - **[update_xml.py](scripts/update_xml.py)**
+  - **[publish_geoserver.py](scripts/publish_geoserver.py)**
+  - **[geonetwork_login.py](scripts/geonetwork_login.py)**
+  - **[upload_metadata_initial.py](scripts/upload_metadata_initial.py)**
+  - **[add_coverage.py](scripts/add_coverage.py)**
+  - **[add_contentinfo.py](scripts/add_contentinfo.py)**
+  - **[tif_to_png.py](scripts/tif_to_png.py)**
+  - **[upload_data.py](scripts/upload_data.py)**
+  - **[update_metadata.py](scripts/update_metadata.py)**
+
+## Usage
+
+1. **Set up the configuration**
+
+    - Edit the [config.yaml](config.yaml) file to set the proper parameters (e.g., file paths, processing steps, and style).
+
+2. **Run the entire workflow**
+
+    In the terminal, navigate to the project root and run:
+
+    ```sh
+    snakemake --cores <number_of_cores>
+    ```
+
+    Replace `<number_of_cores>` with the number of cores you want to use. This command will execute all the rules defined in [snakefile](http://_vscodecontentref_/0) in the correct order.
+
+3. **Run a specific rule**
+
+    If you need to run only a specific step (e.g., upload metadata), specify the target file as follows:
+
+    ```sh
+    snakemake metadata_uploaded.txt --cores 1
+    ```
+
+    This runs the rule whose output is [metadata_uploaded.txt](http://_vscodecontentref_/1) (defined in snakefile).
+
+4. **Dry run (preview)**
+
+    To preview the steps without executing them, run:
+
+    ```sh
+    snakemake --dry-run
+    ```
+
+5. **Detailed execution log**
+
+    To see detailed logs during execution, use the `-p` flag:
+
+    ```sh
+    snakemake --cores <number_of_cores> -p
+    ```
+
+## Invoking Snakemake Manually
+
+The workflow is invoked using the [snakemake](http://_vscodecontentref_/2) command. Make sure you are at the root directory of the project (where the [snakefile](http://_vscodecontentref_/3) is located) before running the command.
+
+Example:
+
+```sh
+snakemake --cores 4

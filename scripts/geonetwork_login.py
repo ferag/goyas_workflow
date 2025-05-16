@@ -3,21 +3,28 @@ import os
 import requests
 import sys
 import json
+import yaml
 
 # Si se ejecuta dentro de Snakemake, la variable 'snakemake' estará definida.
 try:
+    yaml_file = snakemake.input.config
     session_file = snakemake.output.session
 except NameError:
     if len(sys.argv) < 2:
         print("Uso: geonetwork_login.py <output_file>")
         sys.exit(1)
-    session_file = sys.argv[1]
+    yaml_file = sys.argv[1]
+    session_file = sys.argv[2]
 
-def login_geonetwork(output_file):
+# Leer el YAML de configuración
+with open(yaml_file, 'r', encoding='utf-8') as f:
+    config = yaml.safe_load(f)
+
+def login_geonetwork(config, output_file):
     # URL base y credenciales
-    geonetwork_url = "https://goyas.csic.es/geonetwork"
-    username = "admin"
-    password = "*************"
+    geonetwork_url = config.get("geonetwork")['url']
+    username = config.get("geonetwork")['username']
+    password = config.get("geonetwork")['password']
 
     # Crear sesión
     session = requests.Session()
@@ -59,4 +66,4 @@ def login_geonetwork(output_file):
     print(f"Información de la sesión guardada en: {output_file}")
 
 if __name__ == "__main__":
-    login_geonetwork(session_file)
+    login_geonetwork(config, session_file)

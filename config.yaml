@@ -1,14 +1,27 @@
-file: "temp.tif"
+file: "Example_CdP_Sentinel-2_L2A_NDWI.tif"
+geonetwork:
+  url: "https://goyas.csic.es/geonetwork"
+  username: ""
+  password: ""
+storage:
+  endpoint_url: "https://api.cloud.ifca.es:8080"
+  access_key: ""
+  secret_key: ""
+  bucket: ""
 geoserver:
+  url: "https://goyas.csic.es/geoserver"
+  workspace: "goyas"
+  username: ""
+  password: ""
   enabled: true # Si está a True, publica el dato en geoserver
   style: "goyas:temp" # Activods de momento: goyas:RGB_Composition, goyas:chl, goyas:temp
 
-title: "El Val - Temperature"
+title: "Test S3"
 abstract: "Temperatura del agua en el embalse El Val"
 contact:
-  individualName: "Daniel García Díaz"
+  individualName: "Fernando Aguilar"
   organisationName: "IFCA-CSIC"
-  email: "garciad@ifca.unican.es"
+  email: "aguilarf@ifca.unican.es"
 provenance: "Fuente de datos XYZ"
 preprocessing:
   method: "ACOLITE 20250114.0"
@@ -38,8 +51,8 @@ resolution:
   y: 10
 
 keywords:
-  theme: "Water; Temp; Temperature"
-  place: "El Val; Zaragoza"
+  theme: "Water; NDWI"
+  place: "CdP; Cuerda del Pozo; Vinuesa"
 
 license:
   type: "Creative Commons 4.0"

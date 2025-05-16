@@ -340,13 +340,13 @@
           <gmd:onLine>
             <gmd:CI_OnlineResource>
               <gmd:linkage>
-                <gmd:URL>https://goyas.csic.es/geonetwork/srv/api/records/05699772-0d6f-40aa-b11e-ec49deb2a317/attachments/Example_CdP_Sentinel-2_L2A_NDWI.tif</gmd:URL>
+                <gmd:URL>FILE</gmd:URL>
               </gmd:linkage>
               <gmd:protocol>
                 <gco:CharacterString>WWW:LINK-1.0-http--link</gco:CharacterString>
               </gmd:protocol>
               <gmd:name>
-                <gco:CharacterString>Example_CdP_Sentinel-2_L2A_NDWI.tif</gco:CharacterString>
+                <gco:CharacterString>FILE_NAME</gco:CharacterString>
               </gmd:name>
             </gmd:CI_OnlineResource>
           </gmd:onLine>

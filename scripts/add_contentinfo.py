@@ -127,16 +127,6 @@ def update_contentinfo(root, parameters_cfg):
     return gmd_contentinfo
 
 
-    # 3) Insertar <gmd:contentInfo> justo después de <gmd:identificationInfo>
-    #    Buscamos la etiqueta <gmd:identificationInfo> y la insertamos después
-    identification_info = root.find(".//gmd:identificationInfo", namespaces)
-    if identification_info is not None and parameters_cfg:
-        insert_after(identification_info, content_info, root)
-
-    # Si no se encontró identificationInfo o no hay parámetros, podrías appendeárselo a root
-    elif parameters_cfg:
-        root.append(content_info)
-
 def create_scope_element(param_name):
     """
     Crea el bloque:

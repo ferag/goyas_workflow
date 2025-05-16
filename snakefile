@@ -6,7 +6,7 @@ rule update_xml:
         base_xml="base_iso19139.xml",
         config="config.yaml"
     output:
-        "updated_metadata.xml"
+        "temp_files/updated_metadata.xml"
     script:
         "scripts/update_xml.py"
 
@@ -16,44 +16,46 @@ rule publish_geoserver:
         data=config["file"],
         config="config.yaml"
     output:
-        "geoserver_publish_done.txt"
+        "temp_files/geoserver_publish_done.txt"
     script:
         "scripts/publish_geoserver.py"
 
 # Paso 3: Login en Geonetwork
 rule geonetwork_login:
+    input:
+        config="config.yaml"
     output:
-        session="geonetwork_session.txt"
+        session="temp_files/geonetwork_session.txt"
     script:
         "scripts/geonetwork_login.py"
 
 # Paso 4: Subida de la primera versión de metadatos
 rule upload_metadata_initial:
     input:
-        session="geonetwork_session.txt",
-        metadata="updated_metadata.xml"
+        session="temp_files/geonetwork_session.txt",
+        metadata="temp_files/updated_metadata.xml"
     output:
-        "metadata_uploaded.txt"
+        "temp_files/metadata_uploaded.txt"
     script:
         "scripts/upload_metadata_initial.py"
 
 rule add_coverage:
     input:
-        xml="updated_metadata.xml",
+        xml="temp_files/updated_metadata.xml",
         config="config.yaml",
         data=config['file']
     output:
-        "updated_metadata_with_coverage.xml"
+        "temp_files/updated_metadata_with_coverage.xml"
     script:
         "scripts/add_coverage.py"
 
 rule add_contentinfo:
     input:
-        xml="updated_metadata_with_coverage.xml",
+        xml="temp_files/updated_metadata_with_coverage.xml",
         config="config.yaml",
         data=config['file']
     output:
-        "updated_metadata_with_content.xml"
+        "temp_files/updated_metadata_with_content.xml"
     script:
         "scripts/add_contentinfo.py"
 
@@ -61,31 +63,32 @@ rule tif_snapshot:
     input:
         data=config['file']
     output:
-        "snapshot.png"
+        "temp_files/snapshot.png"
     script:
         "scripts/tif_to_png.py"
 
 rule upload_data:
     input:
-        session="geonetwork_session.txt",
-        record_id="metadata_uploaded.txt",
-        data=config['file'],
-        png="snapshot.png"
+        session="temp_files/geonetwork_session.txt",
+        record_id="temp_files/metadata_uploaded.txt",
+        config="config.yaml",
+        png="temp_files/snapshot.png"
+
     output:
-        "upload_response.json"
+        "temp_files/upload_response.json"
     script:
         "scripts/upload_data.py"
 
 rule update_metadata:
     input:
-        xml="updated_metadata_with_content.xml",
+        xml="temp_files/updated_metadata_with_content.xml",
         config="config.yaml",
-        record_id="metadata_uploaded.txt",
-        upload_response="upload_response.json",
+        record_id="temp_files/metadata_uploaded.txt",
+        upload_response="temp_files/upload_response.json",
         wms=rules.publish_geoserver.output,
-        session="geonetwork_session.txt"
+        session="temp_files/geonetwork_session.txt"
     output:
-        "final_metadata.xml"
+        "temp_files/final_metadata.xml"
     script:
         "scripts/update_metadata.py"
 

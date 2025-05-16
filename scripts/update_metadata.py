@@ -99,9 +99,9 @@ def update_metadata(xml_file, record_id, combined_response, output_file, wms_url
             if resource_url.text == 'FILE':
                 print(combined_response.get('tif_response', {}).get('url', ''))
                 resource_url.text = combined_response.get('tif_response', {}).get('url', '')
-                name_elem = resource.find('gmd:name', namespaces)
+                name_elem = resource.find('.//gmd:name', namespaces)
                 if name_elem is not None:
-                    char_str = name_elem.find('gco:CharacterString', namespaces)
+                    char_str = name_elem.find('.//gco:CharacterString', namespaces)
                     if char_str is not None:
                         char_str.text = combined_response.get('tif_response', {}).get('filename', '')
 

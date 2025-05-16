@@ -3,9 +3,6 @@ import rasterio
 import matplotlib.pyplot as plt
 import sys
 
-import rasterio
-import matplotlib.pyplot as plt
-
 def generate_png(input_tif, output_png, rgb_bands=None):
     """
     Genera un snapshot PNG a partir de un GeoTIFF:

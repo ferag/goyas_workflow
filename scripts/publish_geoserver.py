@@ -11,12 +11,12 @@ def create_coverage_store(yaml_file, output_file):
     with open(yaml_file, 'r') as f:
         config = yaml.safe_load(f)
 
-    geoserver_url = "https://goyas.csic.es/geoserver"
-    workspace = "goyas"
+    geoserver_url = config.get("geoserver")['url']
+    workspace = config.get("geoserver")['workspace']
     coveragestore = config.get("title")
     style = config.get("geoserver")["style"]
-    username = "admin"
-    password = "*************"
+    username = config.get("geoserver")['username']
+    password = config.get("geoserver")['password']
     tif_path = config.get("file")
 
     # Payload XML, utilizando la variable coveragestore en el <name> y en la URL de coverages
