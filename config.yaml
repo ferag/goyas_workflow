@@ -7,7 +7,7 @@ storage:
   endpoint_url: "https://api.cloud.ifca.es:8080"
   access_key: ""
   secret_key: ""
-  bucket: ""
+  bucket: "geonetwork"
 geoserver:
   url: "https://goyas.csic.es/geoserver"
   workspace: "goyas"
