@@ -19,41 +19,47 @@ def create_coverage_store(yaml_file, output_file):
     password = config.get("geoserver")['password']
     tif_path = config.get("file")
 
-    # Payload XML, utilizando la variable coveragestore en el <name> y en la URL de coverages
-    xml_payload = f"""<?xml version="1.0" encoding="UTF-8"?>
-<coverageStore>
-    <name>{coveragestore}</name>
-    <description>First test API</description>
-    <type>GeoTIFF</type>
-    <enabled>true</enabled>
-    <workspace>
-        <name>{workspace}</name>
-        <link>https://goyas.csic.es/geoserver/rest/workspaces/{workspace}</link>
-    </workspace>
-    <__default__>true</__default__>
-    <url>file:data/Example_CdP_Sentinel-2_L2A_NDWI.tif</url>
-    <coverages>
-        <link>https://goyas.csic.es/geoserver/rest/workspaces/{workspace}/coveragestores/{coveragestore}/coverages.json</link>
-    </coverages>
-</coverageStore>"""
+    status_code = 0
+    while(status_code not in [200, 201]):
+      # Payload XML, utilizando la variable coveragestore en el <name> y en la URL de coverages
+      xml_payload = f"""<?xml version="1.0" encoding="UTF-8"?>
+  <coverageStore>
+      <name>{coveragestore}</name>
+      <description>First test API</description>
+      <type>GeoTIFF</type>
+      <enabled>true</enabled>
+      <workspace>
+          <name>{workspace}</name>
+          <link>https://goyas.csic.es/geoserver/rest/workspaces/{workspace}</link>
+      </workspace>
+      <__default__>true</__default__>
+      <url>file:data/Example_CdP_Sentinel-2_L2A_NDWI.tif</url>
+      <coverages>
+          <link>https://goyas.csic.es/geoserver/rest/workspaces/{workspace}/coveragestores/{coveragestore}/coverages.json</link>
+      </coverages>
+  </coverageStore>"""
 
-    # URL para crear el coverage store
-    url = f"{geoserver_url}/rest/workspaces/{workspace}/coveragestores"
-    headers = {
-        "accept": "application/json",
-        "content-type": "application/xml"
-    }
-    auth = (username, password)
+      # URL para crear el coverage store
+      url = f"{geoserver_url}/rest/workspaces/{workspace}/coveragestores"
+      headers = {
+          "accept": "application/json",
+          "content-type": "application/xml"
+      }
+      auth = (username, password)
 
-    response = requests.post(url, headers=headers, data=xml_payload, auth=auth)
-    print("Código de respuesta:", response.status_code)
-    if response.status_code in [200, 201]:
-        print("Coverage store creado correctamente.")
-        print(response.text)
-    else:
-        print("Error al crear coverage store:")
-        print(response.text)
-        sys.exit(1)
+      response = requests.post(url, headers=headers, data=xml_payload, auth=auth)
+      print("Código de respuesta:", response.status_code)
+      if response.status_code in [200, 201]:
+          print("Coverage store creado correctamente.")
+          status_code = response.status_code
+          print(response.text)
+      else:
+          print("Error al crear coverage store:")
+          print(response.text)
+          coveragestore = coveragestore + "_" + coveragestore[0]
+          status_code = response.status_code
+          if len(coveragestore) > 111:
+            sys.exit(1)
 
     # 2 subo el fichero
     upload_url = f"{geoserver_url}/rest/workspaces/{workspace}/coveragestores/{coveragestore}/file.geotiff?filename={tif_path}&updateBBox=true"
