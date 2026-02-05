@@ -41,12 +41,27 @@ def insert_after(target_elem, new_elem, parent):
     parent.append(new_elem)
 
 
+def normalize_parameters(parameters_cfg):
+    if isinstance(parameters_cfg, dict):
+        return parameters_cfg
+    if isinstance(parameters_cfg, list):
+        normalized = {}
+        for idx, item in enumerate(parameters_cfg):
+            if not isinstance(item, dict):
+                continue
+            key = item.get("key") or item.get("name") or f"param_{idx + 1}"
+            normalized[key] = item
+        return normalized
+    return {}
+
+
 def update_contentinfo(root, parameters_cfg):
     """
     Inserta un bloque <gmd:contentInfo> -> <gmi:MI_CoverageDescription> con
     rangeElementDescription para cada parámetro (name, definition, unit).
     Sin error/precision (para no invalidar la ISO en gmi:MI_Band).
     """
+    parameters_cfg = normalize_parameters(parameters_cfg)
     if not parameters_cfg:
         return None  # No hay contentInfo si no hay parámetros
 
@@ -208,10 +223,9 @@ def add_data_quality(root, config):
     - Se ubica cada dataQualityInfo tras <gmd:identificationInfo>, si existe, o se appendea al root.
     """
 
-    parameters = config.get("metadata").get("parameters", {})
+    parameters = normalize_parameters(config.get("metadata").get("parameters", {}))
     if not parameters:
         print("No se encontró 'parameters' en YAML. No se añaden dataQualityInfo.")
-        tree.write(output_file, encoding="utf-8", xml_declaration=True)
         return
 
     # Ubicación donde insertamos dataQuality
