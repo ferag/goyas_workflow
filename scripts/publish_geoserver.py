@@ -11,13 +11,13 @@ def create_coverage_store(yaml_file, output_file):
     with open(yaml_file, 'r') as f:
         config = yaml.safe_load(f)
 
-    geoserver_url = config.get("geoserver")['url']
-    workspace = config.get("geoserver")['workspace']
+    geoserver_url = config.get("services")['geoserver']['url']
+    workspace = config.get("services")['geoserver']['workspace']
     coveragestore = config.get("title")
-    style = config.get("geoserver")["style"]
-    username = config.get("geoserver")['username']
-    password = config.get("geoserver")['password']
-    tif_path = config.get("file")
+    style = config.get("services")['geoserver']["style"]
+    username = config.get("services")['geoserver']['username']
+    password = config.get("services")['geoserver']['password']
+    tif_path = config.get("dataset")['file']
 
     status_code = 0
     while(status_code not in [200, 201]):
