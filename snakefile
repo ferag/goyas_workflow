@@ -1,6 +1,42 @@
+# GOYAS Workflow - Snakefile
+# Fase 1: Validacion 
+# Fase 2: Generar xml base
+#############################
+
 configfile: "config.yaml"
 
-# Paso 1: Actualización del XML en base al YAML
+### Fase 1
+##########
+
+# Paso 1.1: Verificación del entorno (Python + dependencias + directorios)
+rule check_environment:
+    input:
+        "requirements.txt"
+    output:
+        "logs/env_check.json"
+    script:
+        "scripts/validation/check_environment.py"
+
+# Paso 1.2: Validación del archivo config.yaml
+rule validate_config:
+    input:
+        "config.yaml"
+    output:
+        "logs/config_validation.json"
+    script:
+        "scripts/validation/validate_config.py"
+
+# Ejecuta todos los pasos de validación
+rule validation:
+    input:
+        rules.check_environment.output,
+        rules.validate_config.output
+
+### Fase 2
+##########
+        
+
+# Paso 2.1: Actualización del XML en base al YAML
 rule update_xml:
     input:
         base_xml="base_iso19139.xml",
@@ -13,7 +49,7 @@ rule update_xml:
 # Paso 2: Publicación en Geoserver (si está activada en el YAML)
 rule publish_geoserver:
     input:
-        data=config["file"],
+        data=config["dataset"]["file"],
         config="config.yaml"
     output:
         "temp_files/geoserver_publish_done.txt"
@@ -43,7 +79,7 @@ rule add_coverage:
     input:
         xml="temp_files/updated_metadata.xml",
         config="config.yaml",
-        data=config['file']
+        data=config['dataset']['file']
     output:
         "temp_files/updated_metadata_with_coverage.xml"
     script:
@@ -53,7 +89,7 @@ rule add_contentinfo:
     input:
         xml="temp_files/updated_metadata_with_coverage.xml",
         config="config.yaml",
-        data=config['file']
+        data=config['dataset']['file']
     output:
         "temp_files/updated_metadata_with_content.xml"
     script:
@@ -61,7 +97,7 @@ rule add_contentinfo:
 
 rule tif_snapshot:
     input:
-        data=config['file']
+        data=config['dataset']['file']
     output:
         "temp_files/snapshot.png"
     script:
@@ -97,4 +133,4 @@ rule update_metadata:
 # Regla principal que engloba todos los pasos
 rule all:
     input:
-        rules.update_xml.output,
+        "temp_files/final_metadata.xml",
