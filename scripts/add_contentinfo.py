@@ -208,7 +208,7 @@ def add_data_quality(root, config):
     - Se ubica cada dataQualityInfo tras <gmd:identificationInfo>, si existe, o se appendea al root.
     """
 
-    parameters = config.get("parameters", {})
+    parameters = config.get("metadata").get("parameters", {})
     if not parameters:
         print("No se encontró 'parameters' en YAML. No se añaden dataQualityInfo.")
         tree.write(output_file, encoding="utf-8", xml_declaration=True)
@@ -259,7 +259,7 @@ def main(xml_file, config, output_file):
     tree = ET.parse(xml_file)
     root = tree.getroot()
 
-    parameters_cfg = config.get("parameters", {})
+    parameters_cfg = config.get("metadata").get("parameters", {})
 
     # 1) Insertar contentInfo
     gmd_contentinfo = update_contentinfo(root, parameters_cfg)

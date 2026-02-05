@@ -5,6 +5,8 @@
 
 configfile: "config.yaml"
 
+RUN_ALL = config.get("run_all", False)
+
 ### Fase 1
 ##########
 
@@ -129,6 +131,16 @@ rule update_metadata:
         "scripts/update_metadata.py"
 
 
+
+# Regla para ejecutar todos los pasos y permitir reanudación desde el último correcto
+rule run_all:
+    input:
+        rules.validation.output,
+        rules.update_metadata.output
+    output:
+        "logs/run_all.done"
+    shell:
+        "touch {output}"
 
 # Regla principal que engloba todos los pasos
 rule all:

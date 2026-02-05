@@ -22,9 +22,9 @@ with open(yaml_file, 'r', encoding='utf-8') as f:
 
 def login_geonetwork(config, output_file):
     # URL base y credenciales
-    geonetwork_url = config.get("geonetwork")['url']
-    username = config.get("geonetwork")['username']
-    password = config.get("geonetwork")['password']
+    geonetwork_url = config.get("services")['geonetwork']['url']
+    username = config.get("services")['geonetwork']['username']
+    password = config.get("services")['geonetwork']['password']
 
     # Crear sesión
     session = requests.Session()

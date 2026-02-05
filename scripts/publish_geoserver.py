@@ -11,21 +11,13 @@ def create_coverage_store(yaml_file, output_file):
     with open(yaml_file, 'r') as f:
         config = yaml.safe_load(f)
 
-    geoserver = config.get("geoserver", {})
-    publish_geoserver = geoserver.get("publish_geoserver", False)
-    if not publish_geoserver:
-        with open(str(output_file), 'w', encoding='utf-8') as f:
-            f.write("")
-        print("Publicación en Geoserver desactivada; se omite la creación del coverage store.")
-        return
-
-    geoserver_url = geoserver['url']
-    workspace = geoserver['workspace']
+    geoserver_url = config.get("services")['geoserver']['url']
+    workspace = config.get("services")['geoserver']['workspace']
     coveragestore = config.get("title")
-    style = geoserver["style"]
-    username = geoserver['username']
-    password = geoserver['password']
-    tif_path = config.get("file")
+    style = config.get("services")['geoserver']["style"]
+    username = config.get("services")['geoserver']['username']
+    password = config.get("services")['geoserver']['password']
+    tif_path = config.get("dataset")['file']
 
     status_code = 0
     while(status_code not in [200, 201]):
