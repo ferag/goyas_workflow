@@ -302,4 +302,3 @@ if __name__ == "__main__":
             xml_file_path = sys.argv[2]
             output_file = sys.argv[3]
     create_coverage_store(yaml_file, output_file)
-
