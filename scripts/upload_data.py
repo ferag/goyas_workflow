@@ -9,13 +9,33 @@ from boto3.s3.transfer import TransferConfig, S3Transfer
 import yaml
 import os
 
+def _get_nested(config, *keys):
+    current = config
+    for key in keys:
+        if not isinstance(current, dict):
+            return None
+        current = current.get(key)
+    return current
+
+
 def upload_data(session_file, record_id_file, config, png_file_path, output_file):
-    geonetwork_url = config.get("geonetwork")['url']
-    local_file = config['file']
-    endpoint_url = config.get("storage")['endpoint_url']
-    access_key = config.get("storage")['access_key']
-    secret_key = config.get("storage")['secret_key']
-    bucket_name = config.get("storage")['bucket']
+    geonetwork_cfg = _get_nested(config, "services", "geonetwork") or config.get("geonetwork") or {}
+    storage_cfg = config.get("storage") or {}
+    dataset_cfg = config.get("dataset") or {}
+
+    geonetwork_url = geonetwork_cfg.get("url")
+    local_file = dataset_cfg.get("file") or config.get("file")
+    endpoint_url = storage_cfg.get("endpoint_url")
+    access_key = storage_cfg.get("access_key")
+    secret_key = storage_cfg.get("secret_key")
+    bucket_name = storage_cfg.get("bucket")
+
+    if not geonetwork_url:
+        raise ValueError("Falta la URL de GeoNetwork en la configuración (services.geonetwork.url).")
+    if not local_file:
+        raise ValueError("Falta la ruta del dataset en la configuración (dataset.file).")
+    if not all([endpoint_url, access_key, secret_key, bucket_name]):
+        raise ValueError("Falta configuración de almacenamiento en storage (endpoint_url/access_key/secret_key/bucket).")
 
     # Cargar la información de la sesión (token y cookies)
     with open(session_file, 'r', encoding='utf-8') as f:
@@ -119,7 +139,7 @@ if __name__ == "__main__":
         record_id_file = sys.argv[2]
         yaml_file = sys.argv[3]
         png_file_path = sys.argv[4]
-        output_file = sys.argv[4]
+        output_file = sys.argv[5]
     # Leer el YAML de configuración
     with open(yaml_file, 'r', encoding='utf-8') as f:
         config = yaml.safe_load(f)
