@@ -84,7 +84,7 @@ def update_contentinfo(root, parameters_cfg):
     for param_key, param_vals in parameters_cfg.items():
         name_val = param_vals.get("name", param_key)
         definition_val = param_vals.get("definition", "")
-        unit_val = param_vals.get("unit", "unitless")
+        unit_val = param_vals.get("key", "unitless")
         type_val = param_vals.get("type")
 
         range_elem_desc = ET.SubElement(coverage_desc, f"{{{namespaces['gmi']}}}rangeElementDescription")
@@ -235,7 +235,7 @@ def add_data_quality(root, config):
     for param_key, param_vals in parameters.items():
         error_val = param_vals.get("error")
         precision_val = param_vals.get("precision")
-        name_val = param_vals.get("name")
+        name_val = param_vals.get("key")
         type_val = param_vals.get("type")
 
         if error_val is None and precision_val is None:

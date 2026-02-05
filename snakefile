@@ -1,6 +1,8 @@
 # GOYAS Workflow - Snakefile
 # Fase 1: Validacion 
 # Fase 2: Generar xml base
+# Fase 3: Carga de datos
+# Fase 4: Actualización final XML
 #############################
 
 configfile: "config.yaml"
@@ -46,9 +48,9 @@ rule update_xml:
     output:
         "temp_files/updated_metadata.xml"
     script:
-        "scripts/update_xml.py"
+        "scripts/generate_xml/update_xml.py"
 
-# Paso 2: Publicación en Geoserver (si está activada en el YAML)
+# Paso 2.2: Publicación en Geoserver (si está activada en el YAML)
 rule publish_geoserver:
     input:
         data=config["dataset"]["file"],
@@ -56,18 +58,18 @@ rule publish_geoserver:
     output:
         "temp_files/geoserver_publish_done.txt"
     script:
-        "scripts/publish_geoserver.py"
+        "scripts/generate_xml/publish_geoserver.py"
 
-# Paso 3: Login en Geonetwork
+# Paso 2.3: Login en Geonetwork
 rule geonetwork_login:
     input:
         config="config.yaml"
     output:
         session="temp_files/geonetwork_session.txt"
     script:
-        "scripts/geonetwork_login.py"
+        "scripts/generate_xml/geonetwork_login.py"
 
-# Paso 4: Subida de la primera versión de metadatos
+# Paso 2.4: Subida de la primera versión de metadatos
 rule upload_metadata_initial:
     input:
         session="temp_files/geonetwork_session.txt",
@@ -75,8 +77,9 @@ rule upload_metadata_initial:
     output:
         "temp_files/metadata_uploaded.txt"
     script:
-        "scripts/upload_metadata_initial.py"
+        "scripts/generate_xml/upload_metadata_initial.py"
 
+# Paso 2.5: Incluir coverage
 rule add_coverage:
     input:
         xml="temp_files/updated_metadata.xml",
@@ -85,8 +88,9 @@ rule add_coverage:
     output:
         "temp_files/updated_metadata_with_coverage.xml"
     script:
-        "scripts/add_coverage.py"
+        "scripts/generate_xml/add_coverage.py"
 
+# Paso 2.6: Actualiza content info
 rule add_contentinfo:
     input:
         xml="temp_files/updated_metadata_with_coverage.xml",
@@ -95,15 +99,30 @@ rule add_contentinfo:
     output:
         "temp_files/updated_metadata_with_content.xml"
     script:
-        "scripts/add_contentinfo.py"
+        "scripts/generate_xml/add_contentinfo.py"
 
+# Paso 2.7: Genera miniatura
 rule tif_snapshot:
     input:
         data=config['dataset']['file']
     output:
         "temp_files/snapshot.png"
     script:
-        "scripts/tif_to_png.py"
+        "scripts/generate_xml/tif_to_png.py"
+
+# Ejecuta todos los pasos de validación
+rule generate_xml:
+    input:
+        rules.update_xml.output,
+        rules.publish_geoserver.output,
+        rules.geonetwork_login.output,
+        rules.upload_metadata_initial.output,
+        rules.add_coverage.output,
+        rules.add_contentinfo.output,
+        rules.tif_snapshot.output,
+
+### Fase 3
+##########
 
 rule upload_data:
     input:
@@ -115,7 +134,10 @@ rule upload_data:
     output:
         "temp_files/upload_response.json"
     script:
-        "scripts/upload_data.py"
+        "scripts/upload_data/upload_data.py"
+
+### Fase 4
+##########
 
 rule update_metadata:
     input:
@@ -128,7 +150,7 @@ rule update_metadata:
     output:
         "temp_files/final_metadata.xml"
     script:
-        "scripts/update_metadata.py"
+        "scripts/final_update/update_metadata.py"
 
 
 
@@ -146,13 +168,3 @@ rule run_all:
 rule all:
     input:
         "temp_files/final_metadata.xml",
-
-# Regla opcional para ejecutar todos los pasos (incluye validación) con reanudación automática
-rule run_all:
-    input:
-        rules.validation.output,
-        rules.update_metadata.output
-    output:
-        "logs/run_all.done"
-    shell:
-        "touch {output}"

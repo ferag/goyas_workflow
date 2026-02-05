@@ -8,6 +8,7 @@ from botocore.client import Config as BotoConfig
 from boto3.s3.transfer import TransferConfig, S3Transfer
 import yaml
 import os
+from datetime import datetime
 
 def _get_nested(config, *keys):
     current = config
@@ -95,27 +96,29 @@ def upload_data(session_file, record_id_file, config, png_file_path, output_file
             sys.stdout.flush()
 
     # === SUBIDA A S3 ===
+    ts = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
     transfer = S3Transfer(client=s3, config=tfr_cfg)
     transfer.upload_file(
         local_file,
         bucket_name,
-        local_file,
+        ts + "_" + local_file,
         callback=ProgressPercentage(local_file),
         extra_args={'ACL': 'public-read'}
     )
     print("\n✅ Subida de TIFF completada.")
+    
 
     # Generar URL firmada (1 hora)
     signed_url = s3.generate_presigned_url(
         'get_object',
-        Params={'Bucket': bucket_name, 'Key': local_file},
+        Params={'Bucket': bucket_name, 'Key': ts + "_" + local_file},
         ExpiresIn=3600
     )
     print(f"🔐 URL firmada (1 h): {signed_url}")
 
     # Guardar las respuestas combinadas en un archivo JSON
     combined_response = {
-        "tif_response": {"url": signed_url, "filename": local_file},
+        "tif_response": {"url": f"https://portal.cloud.ifca.es/api/swift/containers/{bucket_name}/object/{ts}_{local_file}", "filename": ts + "_" + local_file},
         "png_response": png_response.json()
     }
     with open(output_file, 'w', encoding='utf-8') as f:

@@ -38,7 +38,7 @@ def add_coverage_to_xml(xml_file, config, tif_file, output_file):
         print("No se encontró el elemento gmd:MD_DataIdentification. Se agregará al final del documento.")
 
     # --- Bloque de cobertura temporal ---
-    temporal = config.get('coverage', {}).get('temporal', {})
+    temporal = config.get("metadata").get('coverage', {}).get('temporal', {})
     begin_date = temporal.get('begin', '1900-01-01')
     end_date = temporal.get('end', '1900-01-01')
 
@@ -77,7 +77,7 @@ def add_coverage_to_xml(xml_file, config, tif_file, output_file):
             end_elem.text = end_date
 
    # Crear el bloque de cobertura espacial
-    spatial = config.get('coverage', {}).get('spatial', {})
+    spatial = config.get("metadata").get('coverage', {}).get('spatial', {})
     if spatial.get('auto', False):
         # Abre el archivo GeoTIFF
         print("Calculating bounding box")

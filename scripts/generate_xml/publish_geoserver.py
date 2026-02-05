@@ -5,6 +5,14 @@ import yaml
 import json
 import rasterio
 from rasterio.warp import transform_bounds
+import unicodedata
+
+def eliminar_acentos(texto):
+    # Descompone los caracteres (la 'é' se convierte en 'e' + '´')
+    forma_nfkd = unicodedata.normalize('NFKD', texto)
+    # Filtra solo los caracteres que no sean marcas de acentuación
+    solo_ascii = "".join([c for c in forma_nfkd if not unicodedata.combining(c)])
+    return solo_ascii
 
 def create_coverage_store(yaml_file, output_file):
     # Parámetros de conexión y configuración
@@ -13,7 +21,7 @@ def create_coverage_store(yaml_file, output_file):
 
     geoserver_url = config.get("services")['geoserver']['url']
     workspace = config.get("services")['geoserver']['workspace']
-    coveragestore = config.get("title")
+    coveragestore = eliminar_acentos(config.get("metadata").get("title"))[0:10]
     style = config.get("services")['geoserver']["style"]
     username = config.get("services")['geoserver']['username']
     password = config.get("services")['geoserver']['password']
@@ -23,21 +31,21 @@ def create_coverage_store(yaml_file, output_file):
     while(status_code not in [200, 201]):
       # Payload XML, utilizando la variable coveragestore en el <name> y en la URL de coverages
       xml_payload = f"""<?xml version="1.0" encoding="UTF-8"?>
-  <coverageStore>
-      <name>{coveragestore}</name>
-      <description>First test API</description>
-      <type>GeoTIFF</type>
-      <enabled>true</enabled>
-      <workspace>
-          <name>{workspace}</name>
-          <link>https://goyas.csic.es/geoserver/rest/workspaces/{workspace}</link>
-      </workspace>
-      <__default__>true</__default__>
-      <url>file:data/Example_CdP_Sentinel-2_L2A_NDWI.tif</url>
-      <coverages>
-          <link>https://goyas.csic.es/geoserver/rest/workspaces/{workspace}/coveragestores/{coveragestore}/coverages.json</link>
-      </coverages>
-  </coverageStore>"""
+    <coverageStore>
+        <name>{coveragestore}</name>
+        <description>First test API</description>
+        <type>GeoTIFF</type>
+        <enabled>true</enabled>
+        <workspace>
+            <name>{workspace}</name>
+            <link>https://goyas.csic.es/geoserver/rest/workspaces/{workspace}</link>
+        </workspace>
+        <__default__>true</__default__>
+        <url>file:data/{tif_path}</url>
+        <coverages>
+            <link>https://goyas.csic.es/geoserver/rest/workspaces/{workspace}/coveragestores/{coveragestore}/coverages.json</link>
+        </coverages>
+    </coverageStore>"""
 
       # URL para crear el coverage store
       url = f"{geoserver_url}/rest/workspaces/{workspace}/coveragestores"

@@ -37,7 +37,7 @@ def build_lineage(proc):
     # Sección de descripción
     description = ET.SubElement(li_process_step, f"{{{ns_gmd}}}description")
     char_desc = ET.SubElement(description, f"{{{ns_gco}}}CharacterString")
-    char_desc.text = proc.get("description", "")
+    char_desc.text = proc.get("step", "")
 
     # Sección de processingInformation
     processingInformation = ET.SubElement(li_process_step, f"{{{ns_gmd}}}processingInformation")
@@ -48,7 +48,7 @@ def build_lineage(proc):
     # Sección de título
     title = ET.SubElement(ci_citation, f"{{{ns_gmd}}}title")
     char_title = ET.SubElement(title, f"{{{ns_gco}}}CharacterString")
-    char_title.text = proc.get("title", "")
+    char_title.text = proc.get("algorithm", "")
 
     # Sección de identificador
     identifier = ET.SubElement(ci_citation, f"{{{ns_gmd}}}identifier")
@@ -72,7 +72,7 @@ def update_xml_with_processing(xml_file, yaml_file, output_file):
     root = tree.getroot()
 
     # Actualizar el título en la sección identificationInfo, si se define en el YAML
-    yaml_title = config.get("title")
+    yaml_title = config.get("metadata").get("title")
     if yaml_title:
         # Buscar el elemento <gco:CharacterString> dentro de identificationInfo > MD_DataIdentification > citation > CI_Citation > title
         title_elem = root.find(".//gmd:identificationInfo/gmd:MD_DataIdentification/gmd:citation/gmd:CI_Citation/gmd:title/gco:CharacterString",
@@ -98,7 +98,7 @@ def update_xml_with_processing(xml_file, yaml_file, output_file):
         print("No se encontró el elemento title en identificationInfo.")
 
     # Actualizar el abstract en la sección identificationInfo, si se define en el YAML
-    yaml_abstract = config.get("abstract")
+    yaml_abstract = config.get("metadata").get("abstract")
     if yaml_title:
         # Buscar el elemento <gco:CharacterString> dentro de identificationInfo > MD_DataIdentification > citation > CI_Citation > title
         abstract_elem = root.find(".//gmd:identificationInfo/gmd:MD_DataIdentification/gmd:abstract/gco:CharacterString",
@@ -111,7 +111,7 @@ def update_xml_with_processing(xml_file, yaml_file, output_file):
             print("No se encontró el elemento title en identificationInfo.")
 
     # Obtener la lista de procesos del YAML (se espera una lista de diccionarios en la clave "processing")
-    processing_list = config.get("processing", [])
+    processing_list = config.get("metadata").get("processing", [])
 
     # Para cada entrada en processing, construir y añadir la sección <gmd:lineage>
     for proc in processing_list:
@@ -127,7 +127,7 @@ def update_xml_with_processing(xml_file, yaml_file, output_file):
     #   organisationName: "IFCA-CSIC"
     #   email: "aguilarf@ifca.unican.es"
     # -------------------------------------------------------------------------
-    contact_cfg = config.get("contact", {})
+    contact_cfg = config.get("metadata").get("contact", {})
     if contact_cfg:
         # Buscar el bloque <gmd:contact>/<gmd:CI_ResponsibleParty>
         ci_responsible = root.find(".//gmd:contact/gmd:CI_ResponsibleParty", namespaces)
@@ -153,6 +153,37 @@ def update_xml_with_processing(xml_file, yaml_file, output_file):
         else:
             print("No se encontró gmd:CI_ResponsibleParty dentro de gmd:contact. No se actualizará la sección de contacto.")
 
+        # Buscar el bloque <gmd:contact>/<gmd:CI_ResponsibleParty>
+        poc_responsible = root.find(".//gmd:identificationInfo/gmd:MD_DataIdentification/gmd:pointOfContact/gmd:CI_ResponsibleParty", namespaces)
+        if poc_responsible is not None:
+            # individualName
+            indiv_elem = poc_responsible.find("gmd:individualName/gco:CharacterString", namespaces)
+            if indiv_elem is not None:
+                indiv_elem.text = contact_cfg.get("individualName", "")
+
+            # organisationName
+            org_elem = poc_responsible.find("gmd:organisationName/gco:CharacterString", namespaces)
+            if org_elem is not None:
+                org_elem.text = contact_cfg.get("organisationName", "")
+
+            # positionName
+            indiv_elem = poc_responsible.find("gmd:positionName/gco:CharacterString", namespaces)
+            if indiv_elem is not None:
+                indiv_elem.text = contact_cfg.get("role", "")
+
+            # email
+            email_elem = poc_responsible.find(
+                "./gmd:contactInfo/gmd:CI_Contact/gmd:address/gmd:CI_Address/"
+                "gmd:electronicMailAddress/gco:CharacterString",
+                namespaces
+            )
+            if email_elem is not None:
+                email_elem.text = contact_cfg.get("email", "")
+        else:
+            print("No se encontró gmd:CI_ResponsibleParty dentro de gmd:contact. No se actualizará la sección de contacto.")
+
+
+
     # -------------------------------------------------------------------------
     # (2) RESOLUCIÓN ESPACIAL
     # YAML:
@@ -160,7 +191,7 @@ def update_xml_with_processing(xml_file, yaml_file, output_file):
     #   x: 10
     #   y: 10
     # -------------------------------------------------------------------------
-    resolution_cfg = config.get("resolution", {})
+    resolution_cfg = config.get("metadata").get("resolution", {})
     if resolution_cfg:
         x_res = resolution_cfg.get("x", None)
         y_res = resolution_cfg.get("y", None)
@@ -191,16 +222,12 @@ def update_xml_with_processing(xml_file, yaml_file, output_file):
     #   theme: "Water; NDWI"
     #   place: "Cuerda del Pozo; Soria"
     # -------------------------------------------------------------------------
-    keywords_cfg = config.get("keywords", {})
+    keywords_cfg = config.get("metadata").get("keywords", {})
     if keywords_cfg:
-        theme_str = keywords_cfg.get("theme", "")
-        place_str = keywords_cfg.get("place", "")
+        theme_keywords = keywords_cfg.get("theme", "")
+        place_keywords = keywords_cfg.get("place", "")
 
-        # Creamos bloques descriptivos para theme y place.
-        # Ejemplo de keywords separadas por ';'
-        theme_keywords = [kw.strip() for kw in theme_str.split(';') if kw.strip()] if theme_str else []
-        place_keywords = [kw.strip() for kw in place_str.split(';') if kw.strip()] if place_str else []
-
+        
         # 3.1 Bloque "theme"
         if theme_keywords:
             # Crear <gmd:descriptiveKeywords> -> <gmd:MD_Keywords>
@@ -250,7 +277,7 @@ def update_xml_with_processing(xml_file, yaml_file, output_file):
     # license:
     #   type: "Creative Commons 4.0"
     # -------------------------------------------------------------------------
-    license_cfg = config.get("license", {})
+    license_cfg = config.get("metadata").get("license", {})
     if license_cfg:
         lic_type = license_cfg.get("type", "")
         # Buscar o crear gmd:resourceConstraints/gmd:MD_LegalConstraints
