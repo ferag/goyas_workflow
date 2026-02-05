@@ -5,6 +5,8 @@
 
 configfile: "config.yaml"
 
+RUN_ALL = config.get("run_all", False)
+
 ### Fase 1
 ##########
 
@@ -130,7 +132,17 @@ rule update_metadata:
 
 
 
+# Regla para ejecutar todos los pasos y permitir reanudación desde el último correcto
+rule run_all:
+    input:
+        rules.validation.output,
+        rules.update_metadata.output
+    output:
+        "logs/run_all.done"
+    shell:
+        "touch {output}"
+
 # Regla principal que engloba todos los pasos
 rule all:
     input:
-        "temp_files/final_metadata.xml",
+        "logs/run_all.done" if RUN_ALL else "temp_files/final_metadata.xml",
