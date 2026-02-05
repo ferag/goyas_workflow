@@ -1,0 +1,108 @@
+# DATASET
+dataset:
+  file: "ndni.tif"
+  resourceFormat: "GeoTIFF"  # Formato del dataset (GeoTIFF o NetCDF)
+
+# METADATOS
+metadata:
+  # --- Identificación ---
+  title: "Índice NDNI en la costa de Galicia (2021)"
+  abstract: "Capa raster del índice NDNI generada a partir de datos satelitales para análisis de bioproductividad marina en la costa de Galicia (2021)."
+  identifier: "goyas-ndni-2021-galicia"
+  language: "spa"
+  status: "completed"
+  maintenanceFrequency: "notPlanned"
+
+  # --- Contacto ---
+  contact:
+    individualName: "Daniel García Díaz"
+    organisationName: "IFCA-CSIC"
+    email: "garciad@ifca.unican.es"
+    role: "pointOfContact"
+
+  # --- Trazabilidad ---
+  provenance: "Datos derivados de reflectancia TOA procedente de Sentinel-2."
+
+  # --- Preprocesado ---
+  preprocessing:
+    software: "ACOLITE"
+    version: "20231023.0"
+    reference: "https://github.com/acolite/acolite/releases/tag/20231023.0"
+    description: "Corrección atmosférica aplicada a partir de reflectancia TOA procedente de Sentinel-2 L1C."
+
+  # --- Procesamiento ---
+  processing:
+    - step: "NDNI computation"
+      algorithm: "Normalized Difference Noctiluca Index (NDNI)"
+      reference: "Kratzer et al. (2014)"
+      parameters_used: "Bandas B2 (azul) y B4 (rojo)"
+      notes: "NDNI = (B2 - B4) / (B2 + B4)"
+      
+    - step: "Corrección atmosférica"
+      algorithm: "ACOLITE"
+      reference: "GitHub/acolite 20231023.0"
+      parameters_used: "sunglint"
+      notes: "Corrección TOA a BOA"
+
+  # --- Cobertura ---
+  coverage:
+    temporal:
+      begin: "2021-09-04"
+      end: "2021-09-04"
+      timezone: "Europe/Madrid"
+    spatial:
+      auto: false
+      west: -9.0002
+      east: -8.0216
+      south: 41.4736
+      north: 42.4485
+
+  # --- Resolución espacial ---
+  resolution:
+    x: 10
+    y: 10
+
+  # --- Palabras clave ---
+  keywords:
+    theme: ["water", "ndni", "noctiluca"]
+    place: ["Pontevedra", "Galicia"]
+
+  # --- Licencia ---
+  licence:
+    id: "CC-BY-4.0"
+    url: "https://spdx.org/licenses/CC-BY-4.0.html"
+
+  # --- Parámetros científicos ---
+  parameters:
+    - key: "ndni"
+      name: "NDNI (Sentinel-2)"
+      definition: "Normalized Difference Noctiluca Index"
+      unit: "1"
+      error: 0.05
+      precision: 0.01
+      reference: "Kratzer et al. (2014), https://doi.org/10.1016/j.rse.2014.06.019"
+
+# SISTEMA DE REFERENCIA ESPACIAL
+crs:
+  epsg: 32629
+
+# SERVICIOS
+services:
+  geonetwork:
+    url: "http://vm215.pub.cloud.ifca.es/geonetwork/"
+    username: "***"
+    password: "****"
+  geoserver:
+    url: "https://goyas.csic.es/geoserver"
+    workspace: "goyas"
+    username: "***"
+    password: "***"
+    publish_geoserver: true
+    default_style: "goyas:temp"
+
+# ALMACENAMIENTO
+storage:
+  endpoint_url: "https://api.cloud.ifca.es:8080"
+  access_key: "****"
+  secret_key: "****"
+  bucket: "geonetwork"
