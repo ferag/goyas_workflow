@@ -35,8 +35,10 @@ def update_metadata(xml_file, record_id, combined_response, output_file, wms_url
     tree = ET.parse(xml_file)
     root = tree.getroot()
 
+    wms_url = wms_url.strip()
+
     # Inserción del bloque onLine dentro de transferOptions en MD_Distribution
-    if wms_url != "":
+    if wms_url:
         # Buscar el elemento <gmd:distributionInfo/gmd:MD_Distribution>
         md_distribution = root.find(".//gmd:distributionInfo/gmd:MD_Distribution", namespaces)
         if md_distribution is None:
@@ -67,7 +69,7 @@ def update_metadata(xml_file, record_id, combined_response, output_file, wms_url
         # Elemento <gmd:name>
         name_elem = ET.SubElement(ci_online_resource, f"{{{namespaces['gmd']}}}name")
         char_name = ET.SubElement(name_elem, f"{{{namespaces['gco']}}}CharacterString")
-        char_name.text = config.get("title")
+        char_name.text = config.get("title") or config.get("file", "")
 
         # Elemento <gmd:function>
         name_elem = ET.SubElement(ci_online_resource, f"{{{namespaces['gmd']}}}function")
