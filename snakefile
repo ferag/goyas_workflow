@@ -152,13 +152,25 @@ rule update_metadata:
     script:
         "scripts/final_update/update_metadata.py"
 
+rule validate_metadata_geonetwork:
+    input:
+        config="config.yaml",
+        session="temp_files/geonetwork_session.txt",
+        record_id="temp_files/metadata_uploaded.txt",
+        upload_response="temp_files/upload_response.json",
+        metadata=rules.update_metadata.output
+    output:
+        "logs/metadata_validation.json"
+    script:
+        "scripts/validation/validate_metadata_geonetwork.py"
+
 
 
 # Regla para ejecutar todos los pasos y permitir reanudación desde el último correcto
 rule run_all:
     input:
         rules.validation.output,
-        rules.update_metadata.output
+        rules.validate_metadata_geonetwork.output
     output:
         "logs/run_all.done"
     shell:
@@ -168,3 +180,4 @@ rule run_all:
 rule all:
     input:
         "temp_files/final_metadata.xml",
+        "logs/metadata_validation.json",
