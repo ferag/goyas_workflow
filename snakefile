@@ -157,6 +157,7 @@ rule validate_metadata_geonetwork:
         config="config.yaml",
         session="temp_files/geonetwork_session.txt",
         record_id="temp_files/metadata_uploaded.txt",
+        upload_response="temp_files/upload_response.json",
         metadata=rules.update_metadata.output
     output:
         "logs/metadata_validation.json"
