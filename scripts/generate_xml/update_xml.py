@@ -22,43 +22,6 @@ def registrar_espacios_de_nombres(xml_file):
             # Si el prefijo está reservado, se salta
             print(f"Skipping reserved namespace prefix: {prefix} -> {uri} ({e})")
 
-# Función existente para construir el bloque <gmd:lineage>
-def build_lineage(proc):
-    # Definir los namespaces
-    ns_gmd = "http://www.isotc211.org/2005/gmd"
-    ns_gco = "http://www.isotc211.org/2005/gco"
-
-    # Crear la estructura completa de <gmd:lineage>
-    lineage = ET.Element(f"{{{ns_gmd}}}lineage")
-    li_lineage = ET.SubElement(lineage, f"{{{ns_gmd}}}LI_Lineage")
-    process_step = ET.SubElement(li_lineage, f"{{{ns_gmd}}}processStep")
-    li_process_step = ET.SubElement(process_step, f"{{{ns_gmd}}}LI_ProcessStep")
-
-    # Sección de descripción
-    description = ET.SubElement(li_process_step, f"{{{ns_gmd}}}description")
-    char_desc = ET.SubElement(description, f"{{{ns_gco}}}CharacterString")
-    char_desc.text = proc.get("step", "")
-
-    # Sección de processingInformation
-    processingInformation = ET.SubElement(li_process_step, f"{{{ns_gmd}}}processingInformation")
-    le_processing = ET.SubElement(processingInformation, f"{{{ns_gmd}}}LE_Processing")
-    softwareReference = ET.SubElement(le_processing, f"{{{ns_gmd}}}softwareReference")
-    ci_citation = ET.SubElement(softwareReference, f"{{{ns_gmd}}}CI_Citation")
-
-    # Sección de título
-    title = ET.SubElement(ci_citation, f"{{{ns_gmd}}}title")
-    char_title = ET.SubElement(title, f"{{{ns_gco}}}CharacterString")
-    char_title.text = proc.get("algorithm", "")
-
-    # Sección de identificador
-    identifier = ET.SubElement(ci_citation, f"{{{ns_gmd}}}identifier")
-    md_identifier = ET.SubElement(identifier, f"{{{ns_gmd}}}MD_Identifier")
-    code = ET.SubElement(md_identifier, f"{{{ns_gmd}}}code")
-    char_code = ET.SubElement(code, f"{{{ns_gco}}}CharacterString")
-    char_code.text = proc.get("reference", "")
-
-    return lineage
-
 def update_xml_with_processing(xml_file, yaml_file, output_file):
     # Registrar los namespaces para la salida
     registrar_espacios_de_nombres(xml_file)
@@ -109,15 +72,6 @@ def update_xml_with_processing(xml_file, yaml_file, output_file):
             print(f"Título actualizado a: {yaml_abstract}")
         else:
             print("No se encontró el elemento title en identificationInfo.")
-
-    # Obtener la lista de procesos del YAML (se espera una lista de diccionarios en la clave "processing")
-    processing_list = config.get("metadata").get("processing", [])
-
-    # Para cada entrada en processing, construir y añadir la sección <gmd:lineage>
-    for proc in processing_list:
-        lineage_elem = build_lineage(proc)
-        # Se añade al final del XML; ajusta la ubicación según sea necesario.
-        root.append(lineage_elem)
 
     # -------------------------------------------------------------------------
     # (1) INFORMACIÓN DE CONTACTO
