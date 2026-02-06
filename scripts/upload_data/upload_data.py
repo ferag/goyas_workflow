@@ -8,7 +8,7 @@ from botocore.client import Config as BotoConfig
 from boto3.s3.transfer import TransferConfig, S3Transfer
 import yaml
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 def _get_nested(config, *keys):
     current = config
@@ -96,7 +96,8 @@ def upload_data(session_file, record_id_file, config, png_file_path, output_file
             sys.stdout.flush()
 
     # === SUBIDA A S3 ===
-    ts = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    ts_dt = datetime.now(timezone.utc) 
+    ts = ts_dt.isoformat()
     transfer = S3Transfer(client=s3, config=tfr_cfg)
     transfer.upload_file(
         local_file,
