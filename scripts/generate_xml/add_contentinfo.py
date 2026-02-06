@@ -213,51 +213,110 @@ def create_quantitative_result_block(parent_elem, id_str, val_str, name_val, typ
     rec_el.text = val_str
 
 # Función existente para construir el bloque <gmd:lineage>
-def build_lineage(proc):
-    # Definir los namespaces
+import xml.etree.ElementTree as ET
+
+def build_lineage(
+    proc,
+    statement_text="Processing steps",
+    source_uuidref="",
+    date_value="2025-12-19T00:00:00+01:00",
+    date_is_datetime=False,
+    date_type_value="creation",
+):
     ns_gmd = "http://www.isotc211.org/2005/gmd"
     ns_gco = "http://www.isotc211.org/2005/gco"
 
-    # Crear la estructura completa de <gmd:lineage>
-    lineage = ET.Element(f"{{{ns_gmd}}}lineage")
-    li_lineage = ET.SubElement(lineage, f"{{{ns_gmd}}}LI_Lineage")
+    ET.register_namespace("gmd", ns_gmd)
+    ET.register_namespace("gco", ns_gco)
 
-    # ---- AÑADIR statement SOLO SI NO EXISTE ----
-    statement = li_lineage.find(".//{http://www.isotc211.org/2005/gmd}statement")
+    NS = {"gmd": ns_gmd, "gco": ns_gco}
 
-    if statement is None:
-        statement = ET.SubElement(li_lineage, f"{{{ns_gmd}}}statement")
-        char_statement = ET.SubElement(statement, f"{{{ns_gco}}}CharacterString")
-        char_statement.text = "Processing steps"
-    # --------------------------------------------
+    def qname(ns, local):
+        return f"{{{ns}}}{local}"
 
-    process_step = ET.SubElement(li_lineage, f"{{{ns_gmd}}}processStep")
-    li_process_step = ET.SubElement(process_step, f"{{{ns_gmd}}}LI_ProcessStep")
+    # ==========================================================
+    # MODO 1 (recomendado): si proc trae el DQ_DataQuality real
+    # proc["_dq"] = <gmd:DQ_DataQuality ...>
+    # => reutiliza/crea 1 lineage y solo añade processStep
+    # ==========================================================
+    dq = proc.get("_dq")
+    if isinstance(dq, ET.Element) and dq.tag == qname(ns_gmd, "DQ_DataQuality"):
+        # Busca lineage existente (solo el primero)
+        lineage = dq.find("gmd:lineage", NS)
+        if lineage is None:
+            lineage = ET.SubElement(dq, qname(ns_gmd, "lineage"))
+            li_lineage = ET.SubElement(lineage, qname(ns_gmd, "LI_Lineage"))
+        else:
+            li_lineage = lineage.find("gmd:LI_Lineage", NS)
+            if li_lineage is None:
+                li_lineage = ET.SubElement(lineage, qname(ns_gmd, "LI_Lineage"))
 
-    # Sección de descripción
-    description = ET.SubElement(li_process_step, f"{{{ns_gmd}}}description")
-    char_desc = ET.SubElement(description, f"{{{ns_gco}}}CharacterString")
-    char_desc.text = proc.get("step", "")
+        # statement solo si no existe
+        statement_el = li_lineage.find("gmd:statement", NS)
+        if statement_el is None:
+            statement_el = ET.SubElement(li_lineage, qname(ns_gmd, "statement"))
+            cs = ET.SubElement(statement_el, qname(ns_gco, "CharacterString"))
+            cs.text = statement_text
 
-    # Sección de processingInformation
-    processingInformation = ET.SubElement(li_process_step, f"{{{ns_gmd}}}processingInformation")
-    le_processing = ET.SubElement(processingInformation, f"{{{ns_gmd}}}LE_Processing")
-    softwareReference = ET.SubElement(le_processing, f"{{{ns_gmd}}}softwareReference")
-    ci_citation = ET.SubElement(softwareReference, f"{{{ns_gmd}}}CI_Citation")
+        # Añade SOLO un processStep
+        process_step = ET.SubElement(li_lineage, qname(ns_gmd, "processStep"))
+        li_process_step = ET.SubElement(process_step, qname(ns_gmd, "LI_ProcessStep"))
 
-    # Sección de título
-    title = ET.SubElement(ci_citation, f"{{{ns_gmd}}}title")
-    char_title = ET.SubElement(title, f"{{{ns_gco}}}CharacterString")
-    char_title.text = proc.get("algorithm", "")
+        desc = ET.SubElement(li_process_step, qname(ns_gmd, "description"))
+        cs_desc = ET.SubElement(desc, qname(ns_gco, "CharacterString"))
+        cs_desc.text = proc.get("step", "")
 
-    # Sección de identificador
-    identifier = ET.SubElement(ci_citation, f"{{{ns_gmd}}}identifier")
-    md_identifier = ET.SubElement(identifier, f"{{{ns_gmd}}}MD_Identifier")
-    code = ET.SubElement(md_identifier, f"{{{ns_gmd}}}code")
-    char_code = ET.SubElement(code, f"{{{ns_gco}}}CharacterString")
-    char_code.text = proc.get("reference", "")
+        source = ET.SubElement(li_process_step, qname(ns_gmd, "source"), {"uuidref": source_uuidref})
+        li_source = ET.SubElement(source, qname(ns_gmd, "LI_Source"))
 
-    return lineage
+        src_desc = ET.SubElement(li_source, qname(ns_gmd, "description"))
+        cs_src_desc = ET.SubElement(src_desc, qname(ns_gco, "CharacterString"))
+
+        notes = (proc.get("notes") or "").strip()
+        params = (proc.get("parameters_used") or "").strip()
+        parts = []
+        if notes:
+            parts.append(notes)
+        if params:
+            parts.append(f"parameters_used: {params}")
+        cs_src_desc.text = " | ".join(parts) if parts else ""
+
+        source_citation = ET.SubElement(li_source, qname(ns_gmd, "sourceCitation"))
+        ci_citation = ET.SubElement(source_citation, qname(ns_gmd, "CI_Citation"))
+
+        title = ET.SubElement(ci_citation, qname(ns_gmd, "title"))
+        cs_title = ET.SubElement(title, qname(ns_gco, "CharacterString"))
+        cs_title.text = proc.get("algorithm", "")
+
+        if date_value:
+            date = ET.SubElement(ci_citation, qname(ns_gmd, "date"))
+            ci_date = ET.SubElement(date, qname(ns_gmd, "CI_Date"))
+
+            date_el = ET.SubElement(ci_date, qname(ns_gmd, "date"))
+            gco_tag = qname(ns_gco, "DateTime") if date_is_datetime else qname(ns_gco, "Date")
+            gco_date = ET.SubElement(date_el, gco_tag)
+            gco_date.text = date_value
+
+            date_type = ET.SubElement(ci_date, qname(ns_gmd, "dateType"))
+            ET.SubElement(
+                date_type,
+                qname(ns_gmd, "CI_DateTypeCode"),
+                {
+                    "codeList": "http://standards.iso.org/iso/19139/resources/gmxCodelists.xml#CI_DateTypeCode",
+                    "codeListValue": date_type_value or "",
+                },
+            )
+
+        identifier = ET.SubElement(ci_citation, qname(ns_gmd, "identifier"))
+        md_identifier = ET.SubElement(identifier, qname(ns_gmd, "MD_Identifier"))
+        code = ET.SubElement(md_identifier, qname(ns_gmd, "code"))
+        cs_code = ET.SubElement(code, qname(ns_gco, "CharacterString"))
+        cs_code.text = proc.get("reference", "")
+
+        # IMPORTANTE: devolvemos el lineage EXISTENTE (no se crea otro)
+        return lineage
+
+ 
 
 def add_data_quality(root, config):
     """
@@ -311,9 +370,8 @@ def add_data_quality(root, config):
 
         # Para cada entrada en processing, construir y añadir la sección <gmd:lineage>
         for proc in processing_list:
+            proc["_dq"] = dq_data_quality
             lineage_elem = build_lineage(proc)
-            # Se añade al final del XML; ajusta la ubicación según sea necesario.
-            dq_data_quality.append(lineage_elem)
 
         # Insertar
         if distributionInfo is not None:
