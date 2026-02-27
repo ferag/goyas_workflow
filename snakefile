@@ -174,7 +174,7 @@ rule run_all:
     output:
         "logs/run_all.done"
     shell:
-        "touch {output}"
+        "python -c \"open(r'{output}', 'a').close()\""
 
 # Regla principal que engloba todos los pasos
 rule all:
