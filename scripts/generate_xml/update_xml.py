@@ -27,7 +27,7 @@ def update_xml_with_processing(xml_file, yaml_file, output_file):
     registrar_espacios_de_nombres(xml_file)
 
     # Cargar la configuración YAML
-    with open(yaml_file, 'r') as f:
+    with open(yaml_file, 'r', encoding='utf-8') as f:
         config = yaml.safe_load(f)
 
     # Parsear el XML de entrada
