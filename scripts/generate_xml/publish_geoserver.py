@@ -16,7 +16,7 @@ def eliminar_acentos(texto):
 
 def create_coverage_store(yaml_file, output_file):
     # Parámetros de conexión y configuración
-    with open(yaml_file, 'r') as f:
+    with open(yaml_file, 'r', encoding='utf-8') as f:
         config = yaml.safe_load(f)
 
     geoserver_url = config.get("services")['geoserver']['url']

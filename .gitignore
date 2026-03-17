@@ -1,0 +1,9 @@
+*configs*
+*data*
+*logs*
+*.snakemake*
+*output*
+*temp_files*
+*tmp*
+
+config.yaml
