@@ -13,6 +13,20 @@ namespaces = {
     'gml': 'http://www.opengis.net/gml/3.2'
 }
 
+
+def insert_before_first(md_data_id, new_elem, ordered_localnames):
+    """
+    Inserta new_elem antes del primer hijo cuyo localname esté en ordered_localnames.
+    Si no encuentra ninguno, lo añade al final.
+    """
+    children = list(md_data_id)
+    for idx, child in enumerate(children):
+        localname = child.tag.split("}", 1)[-1]
+        if localname in ordered_localnames:
+            md_data_id.insert(idx, new_elem)
+            return
+    md_data_id.append(new_elem)
+
 def registrar_espacios_de_nombres(xml_file):
     # Itera sobre los eventos de inicio de espacio de nombres en el archivo XML
     for event, (prefix, uri) in ET.iterparse(xml_file, events=['start-ns']):
@@ -181,6 +195,27 @@ def update_xml_with_processing(xml_file, yaml_file, output_file):
         theme_keywords = keywords_cfg.get("theme", "")
         place_keywords = keywords_cfg.get("place", "")
 
+        if isinstance(theme_keywords, str):
+            theme_keywords = [k.strip() for k in theme_keywords.split(";") if k.strip()]
+        if isinstance(place_keywords, str):
+            place_keywords = [k.strip() for k in place_keywords.split(";") if k.strip()]
+
+        # En MD_DataIdentification, descriptiveKeywords debe ir antes de
+        # resourceConstraints/spatialResolution/language/.../extent/supplementalInformation
+        keyword_blockers = [
+            "resourceSpecificUsage",
+            "resourceConstraints",
+            "aggregationInfo",
+            "spatialRepresentationType",
+            "spatialResolution",
+            "language",
+            "characterSet",
+            "topicCategory",
+            "environmentDescription",
+            "extent",
+            "supplementalInformation",
+        ]
+
         
         # 3.1 Bloque "theme"
         if theme_keywords:
@@ -201,7 +236,7 @@ def update_xml_with_processing(xml_file, yaml_file, output_file):
             # Normalmente, se añade dentro de identificationInfo/gmd:MD_DataIdentification
             md_data_id = root.find(".//gmd:identificationInfo/gmd:MD_DataIdentification", namespaces)
             if md_data_id is not None:
-                md_data_id.append(theme_desc)
+                insert_before_first(md_data_id, theme_desc, keyword_blockers)
             else:
                 root.append(theme_desc)
 
@@ -221,7 +256,7 @@ def update_xml_with_processing(xml_file, yaml_file, output_file):
             })
             md_data_id = root.find(".//gmd:identificationInfo/gmd:MD_DataIdentification", namespaces)
             if md_data_id is not None:
-                md_data_id.append(place_desc)
+                insert_before_first(md_data_id, place_desc, keyword_blockers)
             else:
                 root.append(place_desc)
 
@@ -231,9 +266,15 @@ def update_xml_with_processing(xml_file, yaml_file, output_file):
     # license:
     #   type: "Creative Commons 4.0"
     # -------------------------------------------------------------------------
-    license_cfg = config.get("metadata").get("license", {})
+    metadata_cfg = config.get("metadata", {})
+    license_cfg = metadata_cfg.get("license") or metadata_cfg.get("licence") or {}
     if license_cfg:
-        lic_type = license_cfg.get("type", "")
+        lic_type = (
+            license_cfg.get("url")
+            or license_cfg.get("id")
+            or license_cfg.get("type")
+            or ""
+        )
         # Buscar o crear gmd:resourceConstraints/gmd:MD_LegalConstraints
         md_legal = root.find(".//gmd:resourceConstraints/gmd:MD_LegalConstraints", namespaces)
         if md_legal is not None and lic_type.strip() != "":

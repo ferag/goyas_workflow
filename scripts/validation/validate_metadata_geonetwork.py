@@ -64,29 +64,36 @@ def validate_metadata(config_file, session_file, record_id_file, combined_respon
 
     validate_url = f"{geonetwork_url}/srv/api/records/{record_id}/validate/internal"
     print(validate_url)
-    response = session.put(validate_url, headers=headers)
+    validate_response = session.put(validate_url, headers=headers)
 
-    if response.status_code not in [200, 201, 204]:
-        print(f"Error al validar metadatos: {response.status_code} - {response.text}")
+    if validate_response.status_code not in [200, 201, 204]:
+        print(f"Error al validar metadatos: {validate_response.status_code} - {validate_response.text}")
         sys.exit(1)
 
     headers = {
         'X-XSRF-TOKEN': xsrf_token,
     }
 
-    response = session.delete(edit_url, headers=headers)
+    close_response = session.delete(edit_url, headers=headers)
 
-    if response.status_code not in [200, 201, 204]:
-        print(f"Error al edit metadatos: {response.status_code} - {response.text}")
+    if close_response.status_code not in [200, 201, 204]:
+        print(f"Error al edit metadatos: {close_response.status_code} - {close_response.text}")
         sys.exit(1)
 
     output_path = Path(output_file)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     try:
-        payload = response.json()
+        validation_payload = validate_response.json()
     except ValueError:
-        payload = {"raw_response": response.text}
+        validation_payload = {"raw_response": validate_response.text}
+
+    payload = {
+        "record_id": record_id,
+        "validate_status_code": validate_response.status_code,
+        "close_editor_status_code": close_response.status_code,
+        "validation_payload": validation_payload,
+    }
 
     output_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding='utf-8')
     print(f"Validación completada. Resultado guardado en: {output_file}")

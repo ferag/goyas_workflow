@@ -173,6 +173,60 @@ def validate_config_yaml(cfg_path):
         if pg is not None and not isinstance(pg, bool):
             errors.append("services.geoserver.publish_geoserver must be a boolean if defined.")
 
+    # Optional FAIR-EVA validation gate (plugin/lang/min_score/tests are fixed in code)
+    fair_eva = g("validation", "fair_eva")
+    if fair_eva is not None:
+        if not isinstance(fair_eva, dict):
+            errors.append("validation.fair_eva must be an object if defined.")
+        else:
+            enabled = fair_eva.get("enabled", False)
+            if not isinstance(enabled, bool):
+                errors.append("validation.fair_eva.enabled must be a boolean.")
+
+            api_endpoint = fair_eva.get("api_endpoint")
+            if api_endpoint is not None:
+                if not isinstance(api_endpoint, str) or not api_endpoint.strip():
+                    errors.append("validation.fair_eva.api_endpoint must be a non-empty string if defined.")
+                elif not re_url.match(api_endpoint):
+                    errors.append("validation.fair_eva.api_endpoint must be a valid URL if defined.")
+
+            for deprecated_key in ("plugin", "lang", "min_score", "tests"):
+                if deprecated_key in fair_eva:
+                    warnings.append(
+                        f"validation.fair_eva.{deprecated_key} is ignored; this value is now static in pipeline logic."
+                    )
+
+    # Optional GeoNetwork schema validation settings
+    geonetwork_schema = g("validation", "geonetwork_schema")
+    if geonetwork_schema is not None:
+        if not isinstance(geonetwork_schema, dict):
+            errors.append("validation.geonetwork_schema must be an object if defined.")
+        else:
+            enabled = geonetwork_schema.get("enabled", True)
+            if not isinstance(enabled, bool):
+                errors.append("validation.geonetwork_schema.enabled must be a boolean.")
+
+            retry_cfg = geonetwork_schema.get("retry", {})
+            if retry_cfg is not None and not isinstance(retry_cfg, dict):
+                errors.append("validation.geonetwork_schema.retry must be an object if defined.")
+            elif isinstance(retry_cfg, dict):
+                max_attempts = retry_cfg.get("max_attempts", 6)
+                if not isinstance(max_attempts, int) or max_attempts < 1:
+                    errors.append("validation.geonetwork_schema.retry.max_attempts must be an integer >= 1.")
+
+                sleep_seconds = retry_cfg.get("sleep_seconds", 10)
+                if not _is_number(sleep_seconds) or float(sleep_seconds) < 0:
+                    errors.append("validation.geonetwork_schema.retry.sleep_seconds must be a number >= 0.")
+
+    # Optional post-validation controls
+    pid_minting = g("PID_minting")
+    if pid_minting is not None and not isinstance(pid_minting, bool):
+        errors.append("PID_minting must be a boolean if defined.")
+
+    open_access = g("open_access")
+    if open_access is not None and not isinstance(open_access, bool):
+        errors.append("open_access must be a boolean if defined.")
+
     # Storage
     storage = g("storage")
     if isinstance(storage, dict):

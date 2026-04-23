@@ -66,6 +66,73 @@ This workflow uses [Snakemake](https://snakemake.readthedocs.io/) to orchestrate
     snakemake --cores <number_of_cores> -p
     ```
 
+## FAIR-EVA gate (optional)
+
+The workflow includes an optional FAIR-EVA validation step before the final metadata validation.
+
+- Configuration block: `validation.fair_eva` in `config.yaml`
+- Enable/disable: `validation.fair_eva.enabled`
+- The following FAIR-EVA parameters are static in pipeline code:
+  - `plugin = "goyas"`
+  - `lang = "en"`
+  - `min_score = 75`
+  - fixed test list (RDA checks defined in `scripts/validation/validate_fair_eva.py`)
+
+Outputs:
+
+- JSON report: `logs/fair_eva_validation.json`
+- Marker for downstream steps: `temp_files/fair_eva_ok.txt` (`OK`, `FAIL`, or `SKIPPED`)
+
+If FAIR-EVA is enabled and any static test scores below `min_score`, the workflow stops at this step.
+
+## GeoNetwork schema validation
+
+The workflow includes a dedicated metadata schema validation step after metadata upload/update using GeoNetwork API:
+
+- Endpoint used: `PUT /srv/api/records/{metadataUuid}/validate/internal`
+- Report file: `logs/metadata_schema_validation.json`
+- Gate marker: `temp_files/metadata_schema_ok.txt` (`OK`, `FAIL`, or `SKIPPED`)
+- Optional settings in `config.yaml`:
+  - `validation.geonetwork_schema.enabled`
+  - `validation.geonetwork_schema.retry.max_attempts`
+  - `validation.geonetwork_schema.retry.sleep_seconds`
+
+The validation step performs a pre-check (`GET /records/{uuid}`) and retries if the record is not yet visible in API.
+If schema validation fails, the workflow stops before final validation.
+This API call requires enough permissions in GeoNetwork (Editor or higher on the record).
+
+## Handle PID minting (optional)
+
+After FAIR-EVA + schema validation + final validation are successful, the workflow can mint a Handle PID and inject it into the XML metadata citation (`gmd:CI_Citation/gmd:identifier`).
+
+- Enable/disable: `PID_minting` (top-level boolean in `config.yaml`)
+- Output XML: `temp_files/final_metadata.xml`
+- Report: `logs/pid_minting.json`
+- Marker: `temp_files/pid_minting_ok.txt`
+
+Required Handle settings are read from `services.handle` (or environment variables):
+
+- `services.handle.endpoint` (`HANDLE_ENDPOINT`)
+- `services.handle.prefix` (`HANDLE_PREFIX`)
+- `services.handle.user` (`HANDLE_USER_ENC` / `HANDLE_USER_RAW`)
+- `services.handle.password` (`HANDLE_PASS`)
+
+Optional:
+
+- `services.handle.admin_handle` (`HANDLE_ADMIN_HANDLE`)
+- `services.handle.admin_index` (default `200`)
+- `services.handle.permissions` (default `011111110011`)
+- `services.handle.target_url_template` (default `{geonetwork_url}/srv/spa/catalog.search#/metadata/{metadata_uuid}`)
+
+## Open Access publication (optional)
+
+At the end of the workflow, if schema validation is `OK` and `open_access: true`, the workflow publishes the record in GeoNetwork:
+
+- API call: `PUT /srv/api/records/{metadataUuid}/publish`
+- Enable/disable: `open_access` (top-level boolean)
+- Report: `logs/open_access_publish.json`
+- Marker: `temp_files/open_access_ok.txt`
+
 ## Invoking Snakemake Manually
 
 The workflow is invoked using the [snakemake](http://_vscodecontentref_/2) command. Make sure you are at the root directory of the project (where the [snakefile](http://_vscodecontentref_/3) is located) before running the command.

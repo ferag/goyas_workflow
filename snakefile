@@ -148,11 +148,23 @@ rule update_metadata:
         wms=rules.publish_geoserver.output,
         session="temp_files/geonetwork_session.txt"
     output:
-        "temp_files/final_metadata.xml"
+        "temp_files/final_metadata_pre_pid.xml"
     script:
         "scripts/final_update/update_metadata.py"
 
-rule validate_metadata_geonetwork:
+rule fair_eva_validation:
+    input:
+        config="config.yaml",
+        upload_response="temp_files/upload_response.json",
+        record_id="temp_files/metadata_uploaded.txt",
+        metadata=rules.update_metadata.output
+    output:
+        report="logs/fair_eva_validation.json",
+        ok="temp_files/fair_eva_ok.txt"
+    script:
+        "scripts/validation/validate_fair_eva.py"
+
+rule validate_metadata_schema_geonetwork:
     input:
         config="config.yaml",
         session="temp_files/geonetwork_session.txt",
@@ -160,9 +172,57 @@ rule validate_metadata_geonetwork:
         upload_response="temp_files/upload_response.json",
         metadata=rules.update_metadata.output
     output:
+        report="logs/metadata_schema_validation.json",
+        ok="temp_files/metadata_schema_ok.txt"
+    script:
+        "scripts/validation/validate_schema_geonetwork.py"
+
+rule validate_metadata_geonetwork:
+    input:
+        config="config.yaml",
+        session="temp_files/geonetwork_session.txt",
+        record_id="temp_files/metadata_uploaded.txt",
+        upload_response="temp_files/upload_response.json",
+        metadata=rules.update_metadata.output,
+        schema_report=rules.validate_metadata_schema_geonetwork.output.report,
+        schema_gate=rules.validate_metadata_schema_geonetwork.output.ok,
+        fair_eva_report=rules.fair_eva_validation.output.report,
+        fair_eva_gate=rules.fair_eva_validation.output.ok
+    output:
         "logs/metadata_validation.json"
     script:
         "scripts/validation/validate_metadata_geonetwork.py"
+
+rule mint_handle_pid:
+    input:
+        config="config.yaml",
+        session="temp_files/geonetwork_session.txt",
+        record_id="temp_files/metadata_uploaded.txt",
+        upload_response="temp_files/upload_response.json",
+        metadata=rules.update_metadata.output,
+        fair_gate=rules.fair_eva_validation.output.ok,
+        schema_gate=rules.validate_metadata_schema_geonetwork.output.ok,
+        validation=rules.validate_metadata_geonetwork.output
+    output:
+        metadata="temp_files/final_metadata.xml",
+        report="logs/pid_minting.json",
+        ok="temp_files/pid_minting_ok.txt"
+    script:
+        "scripts/final_update/mint_handle_pid.py"
+
+rule publish_open_access:
+    input:
+        config="config.yaml",
+        session="temp_files/geonetwork_session.txt",
+        record_id="temp_files/metadata_uploaded.txt",
+        upload_response="temp_files/upload_response.json",
+        schema_gate=rules.validate_metadata_schema_geonetwork.output.ok,
+        metadata=rules.mint_handle_pid.output.metadata
+    output:
+        report="logs/open_access_publish.json",
+        ok="temp_files/open_access_ok.txt"
+    script:
+        "scripts/final_update/publish_open_access.py"
 
 
 
@@ -170,14 +230,19 @@ rule validate_metadata_geonetwork:
 rule run_all:
     input:
         rules.validation.output,
-        rules.validate_metadata_geonetwork.output
+        rules.validate_metadata_geonetwork.output,
+        rules.mint_handle_pid.output.report,
+        rules.publish_open_access.output.report
     output:
         "logs/run_all.done"
     shell:
-        "python -c \"open(r'{output}', 'a').close()\""
+        "python3 -c \"open(r'{output}', 'a').close()\""
 
 # Regla principal que engloba todos los pasos
 rule all:
     input:
         "temp_files/final_metadata.xml",
+        "logs/metadata_schema_validation.json",
         "logs/metadata_validation.json",
+        "logs/pid_minting.json",
+        "logs/open_access_publish.json",

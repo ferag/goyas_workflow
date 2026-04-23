@@ -6,6 +6,7 @@ import yaml
 import os
 import rasterio
 import xml.dom.minidom as md
+from datetime import datetime
 
 
 # Definir namespaces (agregar gml además de los ya conocidos)
@@ -212,6 +213,27 @@ def create_quantitative_result_block(parent_elem, id_str, val_str, name_val, typ
     rec_el = ET.SubElement(val_el, f"{{{gco}}}Record")
     rec_el.text = val_str
 
+
+def normalize_iso_date_value(date_value, date_is_datetime):
+    """
+    Si se usa gco:Date, asegura formato YYYY-MM-DD.
+    Si se usa gco:DateTime, deja el valor intacto.
+    """
+    if not date_value:
+        return date_value
+    if date_is_datetime:
+        return date_value
+
+    raw = str(date_value).strip()
+    if len(raw) >= 10:
+        candidate = raw[:10]
+        try:
+            datetime.strptime(candidate, "%Y-%m-%d")
+            return candidate
+        except ValueError:
+            pass
+    return raw
+
 # Función existente para construir el bloque <gmd:lineage>
 import xml.etree.ElementTree as ET
 
@@ -289,6 +311,7 @@ def build_lineage(
         cs_title.text = proc.get("algorithm", "")
 
         if date_value:
+            date_value = normalize_iso_date_value(date_value, date_is_datetime)
             date = ET.SubElement(ci_citation, qname(ns_gmd, "date"))
             ci_date = ET.SubElement(date, qname(ns_gmd, "CI_Date"))
 

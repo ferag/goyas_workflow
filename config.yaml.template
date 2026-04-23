@@ -99,6 +99,31 @@ services:
     password: "***"
     publish_geoserver: true
     default_style: "goyas:temp"
+  handle:
+    endpoint: "https://hdl.grnet.gr:8001/api/handles"
+    prefix: "21.T15999"
+    user: "301%3A21.T15999/TESTUSER17"
+    password: "***"
+    admin_handle: "21.T15999/TESTUSER17"
+    admin_index: 200
+    permissions: "011111110011"
+    target_url_template: "{geonetwork_url}/srv/spa/catalog.search#/metadata/{metadata_uuid}"
+
+# VALIDACIONES OPCIONALES
+validation:
+  fair_eva:
+    enabled: false
+    # Opcional. Si no se define, se usa services.geonetwork.url + /srv/api
+    # api_endpoint: "https://goyas.csic.es/geonetwork/srv/api"
+  geonetwork_schema:
+    enabled: true
+    retry:
+      max_attempts: 6
+      sleep_seconds: 10
+
+# POST-VALIDACIÓN
+PID_minting: false
+open_access: false
 
 # ALMACENAMIENTO
 storage:

@@ -15,6 +15,20 @@ namespaces = {
     'gml': 'http://www.opengis.net/gml/3.2'
 }
 
+
+def insert_before_first(md_data_id, new_elem, ordered_localnames):
+    """
+    Inserta new_elem antes del primer hijo cuyo localname esté en ordered_localnames.
+    Si no encuentra ninguno, lo añade al final.
+    """
+    children = list(md_data_id)
+    for idx, child in enumerate(children):
+        localname = child.tag.split("}", 1)[-1]
+        if localname in ordered_localnames:
+            md_data_id.insert(idx, new_elem)
+            return
+    md_data_id.append(new_elem)
+
 def registrar_espacios_de_nombres(xml_file):
     # Itera sobre los eventos de inicio de espacio de nombres en el archivo XML
     for event, (prefix, uri) in ET.iterparse(xml_file, events=['start-ns']):
@@ -123,8 +137,8 @@ def add_coverage_to_xml(xml_file, config, tif_file, output_file):
 
     # --- Insertar los bloques de cobertura ---
     if data_ident is not None:
-        # Si se encontró MD_DataIdentification, se agregan allí
-        data_ident.append(spatial_extent)
+        # extent debe ir antes de supplementalInformation en ISO19139
+        insert_before_first(data_ident, spatial_extent, ["supplementalInformation"])
         print("Cobertura añadida dentro de MD_DataIdentification.")
     else:
         # Si no se encuentra, se agregan al final del documento

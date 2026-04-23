@@ -14,6 +14,20 @@ namespaces = {
     'gml': 'http://www.opengis.net/gml/3.2'
 }
 
+
+def insert_before_first(md_data_id, new_elem, ordered_localnames):
+    """
+    Inserta new_elem antes del primer hijo cuyo localname esté en ordered_localnames.
+    Si no encuentra ninguno, lo añade al final.
+    """
+    children = list(md_data_id)
+    for idx, child in enumerate(children):
+        localname = child.tag.split("}", 1)[-1]
+        if localname in ordered_localnames:
+            md_data_id.insert(idx, new_elem)
+            return
+    md_data_id.append(new_elem)
+
 def registrar_espacios_de_nombres(xml_file):
     # Itera sobre los eventos de inicio de espacio de nombres en el archivo XML
     for event, (prefix, uri) in ET.iterparse(xml_file, events=['start-ns']):
@@ -121,7 +135,23 @@ def update_metadata(xml_file, record_id, combined_response, output_file, wms_url
     # Intentar insertar la miniatura en el MD_DataIdentification
     ci_citation = root.find(".//gmd:identificationInfo/gmd:MD_DataIdentification", namespaces)
     if ci_citation is not None:
-        ci_citation.append(graphicOverview)
+        # graphicOverview debe ir antes de keywords/constraints/spatial/.../extent
+        graphic_blockers = [
+            "resourceFormat",
+            "descriptiveKeywords",
+            "resourceSpecificUsage",
+            "resourceConstraints",
+            "aggregationInfo",
+            "spatialRepresentationType",
+            "spatialResolution",
+            "language",
+            "characterSet",
+            "topicCategory",
+            "environmentDescription",
+            "extent",
+            "supplementalInformation",
+        ]
+        insert_before_first(ci_citation, graphicOverview, graphic_blockers)
         print("Miniatura añadida a CI_Citation.")
     else:
         # Si no se encuentra, añadirla al final del XML
