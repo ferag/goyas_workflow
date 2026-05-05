@@ -40,8 +40,9 @@ def registrar_espacios_de_nombres(xml_file):
 def update_metadata(xml_file, record_id, combined_response, output_file, wms_url, yaml_file, session_file):
 
     # Parámetros de conexión y configuración
-    with open(yaml_file, 'r') as f:
+    with open(yaml_file, 'r', encoding='utf-8') as f:
         config = yaml.safe_load(f)
+    geonetwork_url = (config.get("services", {}).get("geonetwork", {}).get("url") or "").rstrip("/")
 
     registrar_espacios_de_nombres(xml_file)
 
@@ -83,7 +84,10 @@ def update_metadata(xml_file, record_id, combined_response, output_file, wms_url
         # Elemento <gmd:name>
         name_elem = ET.SubElement(ci_online_resource, f"{{{namespaces['gmd']}}}name")
         char_name = ET.SubElement(name_elem, f"{{{namespaces['gco']}}}CharacterString")
-        char_name.text = config.get("title") or config.get("file", "")
+        char_name.text = (
+            config.get("metadata", {}).get("title")
+            or config.get("dataset", {}).get("file", "")
+        )
 
         # Elemento <gmd:function>
         name_elem = ET.SubElement(ci_online_resource, f"{{{namespaces['gmd']}}}function")
@@ -179,8 +183,13 @@ def update_metadata(xml_file, record_id, combined_response, output_file, wms_url
         'Accept': 'application/json',
         'X-XSRF-TOKEN': xsrf_token
     }
-    update_url = ("https://goyas.csic.es/geonetwork/srv/api/records?"
-                  "metadataType=METADATA&uuidProcessing=OVERWRITE&transformWith=_none_")
+    if not geonetwork_url:
+        print("No se encontró services.geonetwork.url en la configuración.")
+        sys.exit(1)
+    update_url = (
+        f"{geonetwork_url}/srv/api/records?"
+        "metadataType=METADATA&uuidProcessing=OVERWRITE&transformWith=_none_"
+    )
     updated_xml_bytes = ET.tostring(root, encoding='utf-8', method='xml')
     update_response = sess.put(update_url, data=updated_xml_bytes, headers=headers)
     print("Código de respuesta de actualización remota:", update_response.status_code)

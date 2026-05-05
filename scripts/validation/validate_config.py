@@ -25,7 +25,10 @@ re_url = re.compile(r"^https?://", re.IGNORECASE)
 root_dir = Path(__file__).resolve().parents[2]
 
 def _as_date(s):
-    return date.fromisoformat(s)
+    try:
+        return date.fromisoformat(s)
+    except Exception:
+        return None
 
 def _is_number(x):
     return isinstance(x, (int, float)) and not isinstance(x, bool)
@@ -94,14 +97,23 @@ def validate_config_yaml(cfg_path):
             errors.append(f"metadata.contact.role must be one of {role_enum}.")
 
     # temporal Coverage
-    begin = g("metadata", "coverage", "temporal", "begin")
-    end = g("metadata", "coverage", "temporal", "end")
-    timezone = g("metadata", "coverage", "temporal", "timezone", "UTC")
+    temporal_cfg = g("metadata", "coverage", "temporal", default={}) or {}
+    temporal_auto = temporal_cfg.get("auto", False)
+    if not isinstance(temporal_auto, bool):
+        errors.append("metadata.coverage.temporal.auto must be a boolean if defined.")
 
-    d1 = _as_date(begin) if begin else None
-    d2 = _as_date(end) if end else None
-    if (not d1 or not d2) or (d1 > d2):
-        errors.append("metadata.coverage.temporal.begin and end must be valid dates with begin <= end.")
+    begin = temporal_cfg.get("begin")
+    end = temporal_cfg.get("end")
+    timezone = temporal_cfg.get("timezone", "UTC")
+
+    if not temporal_auto:
+        d1 = _as_date(begin) if begin else None
+        d2 = _as_date(end) if end else None
+        if (not d1 or not d2) or (d1 > d2):
+            errors.append(
+                "metadata.coverage.temporal.begin and end must be valid dates with begin <= end "
+                "(or set metadata.coverage.temporal.auto=true)."
+            )
 
     if timezone:
         if not isinstance(timezone, str):
@@ -170,8 +182,11 @@ def validate_config_yaml(cfg_path):
         if url and not re_url.match(url):
             errors.append(f"services.geoserver.url is not a valid URL: {url}")
         pg = geoserver.get("publish_geoserver")
+        ge = geoserver.get("enabled")
         if pg is not None and not isinstance(pg, bool):
             errors.append("services.geoserver.publish_geoserver must be a boolean if defined.")
+        if ge is not None and not isinstance(ge, bool):
+            errors.append("services.geoserver.enabled must be a boolean if defined.")
 
     # Optional FAIR-EVA validation gate (plugin/lang/min_score/tests are fixed in code)
     fair_eva = g("validation", "fair_eva")

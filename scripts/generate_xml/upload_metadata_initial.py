@@ -4,13 +4,12 @@ import sys
 import json
 
 def upload_metadata(session_file, xml_file_path, output_file):
-    geonetwork_url = "https://goyas.csic.es/geonetwork"
-
     # Cargar la información de la sesión (token y cookies)
     with open(session_file, 'r', encoding='utf-8') as f:
         session_info = json.load(f)
     xsrf_token = session_info.get("XSRF-TOKEN")
     cookies = session_info.get("cookies", {})
+    geonetwork_url = (session_info.get("geonetwork_url") or "https://goyas.csic.es/geonetwork").rstrip("/")
 
     # Crear sesión y actualizar cookies
     session = requests.Session()
@@ -18,7 +17,10 @@ def upload_metadata(session_file, xml_file_path, output_file):
     headers = {'X-XSRF-TOKEN': xsrf_token, 'Accept': 'application/json'}
 
     # Construir URL para subir los metadatos
-    upload_url = f"{geonetwork_url}/srv/api/records?metadataType=METADATA&uuidProcessing=GENERATEUUID&transformWith=_none_"
+    upload_url = (
+        f"{geonetwork_url}/srv/api/records?"
+        "metadataType=METADATA&uuidProcessing=GENERATEUUID&transformWith=_none_"
+    )
 
     # Leer y subir el fichero XML de metadatos
     with open(xml_file_path, 'rb') as xml_file:

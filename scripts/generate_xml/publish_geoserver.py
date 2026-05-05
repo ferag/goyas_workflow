@@ -19,12 +19,29 @@ def create_coverage_store(yaml_file, output_file):
     with open(yaml_file, 'r', encoding='utf-8') as f:
         config = yaml.safe_load(f)
 
-    geoserver_url = config.get("services")['geoserver']['url']
-    workspace = config.get("services")['geoserver']['workspace']
+    dataset_cfg = config.get("dataset", {}) or {}
+    geoserver_cfg = (config.get("services", {}) or {}).get("geoserver", {}) or {}
+
+    resource_format = str(dataset_cfg.get("resourceFormat", "")).strip()
+    publish_enabled = geoserver_cfg.get("publish_geoserver")
+    if publish_enabled is None:
+        publish_enabled = geoserver_cfg.get("enabled", False)
+
+    if not publish_enabled or resource_format != "GeoTIFF":
+        print(
+            "Publicación en GeoServer omitida "
+            f"(publish_geoserver={publish_enabled}, resourceFormat={resource_format or 'desconocido'})."
+        )
+        with open(str(output_file), "w", encoding="utf-8") as handle:
+            handle.write("")
+        return
+
+    geoserver_url = geoserver_cfg['url']
+    workspace = geoserver_cfg['workspace']
     coveragestore = eliminar_acentos(config.get("metadata").get("title"))[0:10]
-    style = config.get("services")['geoserver']["style"]
-    username = config.get("services")['geoserver']['username']
-    password = config.get("services")['geoserver']['password']
+    style = geoserver_cfg["style"]
+    username = geoserver_cfg['username']
+    password = geoserver_cfg['password']
     tif_path = config.get("dataset")['file']
 
     status_code = 0
@@ -300,13 +317,11 @@ def create_coverage_store(yaml_file, output_file):
 if __name__ == "__main__":
     try:
         yaml_file = snakemake.input.config
-        output_file = snakemake.output
+        output_file = snakemake.output[0]
     except NameError:
-        # Modo de ejecución manual
-        if len(sys.argv) < 4:
-            print("Uso: upload_metadata_initial.py <session_file> <xml_file_path> <output_file>")
+        if len(sys.argv) < 3:
+            print("Uso: publish_geoserver.py <config_yaml> <output_file>")
             sys.exit(1)
-            session_file = sys.argv[1]
-            xml_file_path = sys.argv[2]
-            output_file = sys.argv[3]
+        yaml_file = sys.argv[1]
+        output_file = sys.argv[2]
     create_coverage_store(yaml_file, output_file)

@@ -101,8 +101,8 @@ rule add_contentinfo:
     script:
         "scripts/generate_xml/add_contentinfo.py"
 
-# Paso 2.7: Genera miniatura
-rule tif_snapshot:
+# Paso 2.7: Genera miniatura (GeoTIFF/NetCDF)
+rule generate_snapshot:
     input:
         data=config['dataset']['file']
     output:
@@ -119,7 +119,7 @@ rule generate_xml:
         rules.upload_metadata_initial.output,
         rules.add_coverage.output,
         rules.add_contentinfo.output,
-        rules.tif_snapshot.output,
+        rules.generate_snapshot.output,
 
 ### Fase 3
 ##########

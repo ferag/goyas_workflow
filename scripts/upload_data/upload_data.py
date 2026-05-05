@@ -26,6 +26,7 @@ def upload_data(session_file, record_id_file, config, png_file_path, output_file
 
     geonetwork_url = geonetwork_cfg.get("url")
     local_file = dataset_cfg.get("file") or config.get("file")
+    resource_format = dataset_cfg.get("resourceFormat") or "dataset"
     endpoint_url = storage_cfg.get("endpoint_url")
     access_key = storage_cfg.get("access_key")
     secret_key = storage_cfg.get("secret_key")
@@ -106,7 +107,7 @@ def upload_data(session_file, record_id_file, config, png_file_path, output_file
         callback=ProgressPercentage(local_file),
         extra_args={'ACL': 'public-read'}
     )
-    print("\n✅ Subida de TIFF completada.")
+    print(f"\n✅ Subida de {resource_format} completada.")
     
 
     # Generar URL firmada (1 hora)
@@ -118,9 +119,15 @@ def upload_data(session_file, record_id_file, config, png_file_path, output_file
     print(f"🔐 URL firmada (1 h): {signed_url}")
 
     # Guardar las respuestas combinadas en un archivo JSON
+    object_info = {
+        "url": f"https://portal.cloud.ifca.es/api/swift/containers/{bucket_name}/object/{ts}_{local_file}",
+        "filename": ts + "_" + local_file,
+        "resourceFormat": resource_format,
+    }
     combined_response = {
-        "tif_response": {"url": f"https://portal.cloud.ifca.es/api/swift/containers/{bucket_name}/object/{ts}_{local_file}", "filename": ts + "_" + local_file},
-        "png_response": png_response.json()
+        "tif_response": object_info,  # Mantener compatibilidad con scripts existentes.
+        "data_response": object_info,
+        "png_response": png_response.json(),
     }
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(json.dumps(combined_response, indent=4))
