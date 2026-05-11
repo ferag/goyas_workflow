@@ -8,6 +8,10 @@
 configfile: "config.yaml"
 
 RUN_ALL = config.get("run_all", False)
+THUMBNAIL_ENABLED = (
+    ((config.get("metadata", {}) or {}).get("thumbnail", {}) or {}).get("enabled", True) is not False
+)
+SNAPSHOT_OUTPUT = ["temp_files/snapshot.png"] if THUMBNAIL_ENABLED else []
 
 ### Fase 1
 ##########
@@ -104,7 +108,8 @@ rule add_contentinfo:
 # Paso 2.7: Genera miniatura (GeoTIFF/NetCDF)
 rule generate_snapshot:
     input:
-        data=config['dataset']['file']
+        data=config['dataset']['file'],
+        config="config.yaml"
     output:
         "temp_files/snapshot.png"
     script:
@@ -119,7 +124,7 @@ rule generate_xml:
         rules.upload_metadata_initial.output,
         rules.add_coverage.output,
         rules.add_contentinfo.output,
-        rules.generate_snapshot.output,
+        SNAPSHOT_OUTPUT,
 
 ### Fase 3
 ##########
@@ -129,7 +134,7 @@ rule upload_data:
         session="temp_files/geonetwork_session.txt",
         record_id="temp_files/metadata_uploaded.txt",
         config="config.yaml",
-        png="temp_files/snapshot.png"
+        png=SNAPSHOT_OUTPUT
 
     output:
         "temp_files/upload_response.json"

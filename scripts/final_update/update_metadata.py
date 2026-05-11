@@ -3,6 +3,8 @@
 import xml.etree.ElementTree as ET
 import json
 import sys
+from urllib.parse import parse_qs, urlparse
+
 import requests
 import yaml
 
@@ -37,6 +39,16 @@ def registrar_espacios_de_nombres(xml_file):
             # Si el prefijo está reservado, se salta
             print(f"Skipping reserved namespace prefix: {prefix} -> {uri} ({e})")
 
+
+def extract_wms_layer_name(wms_url):
+    query = parse_qs(urlparse(wms_url).query)
+    for key in ("LAYERS", "layers"):
+        values = query.get(key)
+        if values and values[0].strip():
+            return values[0].split(",")[0].strip()
+    return ""
+
+
 def update_metadata(xml_file, record_id, combined_response, output_file, wms_url, yaml_file, session_file):
 
     # Parámetros de conexión y configuración
@@ -51,6 +63,7 @@ def update_metadata(xml_file, record_id, combined_response, output_file, wms_url
     root = tree.getroot()
 
     wms_url = wms_url.strip()
+    wms_layer_name = extract_wms_layer_name(wms_url)
 
     # Inserción del bloque onLine dentro de transferOptions en MD_Distribution
     if wms_url:
@@ -85,7 +98,8 @@ def update_metadata(xml_file, record_id, combined_response, output_file, wms_url
         name_elem = ET.SubElement(ci_online_resource, f"{{{namespaces['gmd']}}}name")
         char_name = ET.SubElement(name_elem, f"{{{namespaces['gco']}}}CharacterString")
         char_name.text = (
-            config.get("metadata", {}).get("title")
+            wms_layer_name
+            or config.get("metadata", {}).get("title")
             or config.get("dataset", {}).get("file", "")
         )
 
@@ -125,42 +139,45 @@ def update_metadata(xml_file, record_id, combined_response, output_file, wms_url
                     if char_str is not None:
                         char_str.text = combined_response.get('tif_response', {}).get('filename', '')
 
-    # Añadir un nuevo bloque para la miniatura (THUMBNAIL)
-    ns_gmd = namespaces['gmd']
-    ns_gco = namespaces['gco']
+    thumbnail_url = combined_response.get('png_response', {}).get('url', '')
+    if thumbnail_url:
+        # Añadir un nuevo bloque para la miniatura (THUMBNAIL)
+        ns_gmd = namespaces['gmd']
+        ns_gco = namespaces['gco']
 
-    graphicOverview = ET.Element(f"{{{ns_gmd}}}graphicOverview")
-    mdBrowseGraphic = ET.SubElement(graphicOverview, f"{{{ns_gmd}}}MD_BrowseGraphic")
-    fileName = ET.SubElement(mdBrowseGraphic, f"{{{ns_gmd}}}fileName")
-    charString = ET.SubElement(fileName, f"{{{ns_gco}}}CharacterString")
-    # Asigna la URL proveniente de png_response
-    charString.text = combined_response.get('png_response', {}).get('url', '')
+        graphicOverview = ET.Element(f"{{{ns_gmd}}}graphicOverview")
+        mdBrowseGraphic = ET.SubElement(graphicOverview, f"{{{ns_gmd}}}MD_BrowseGraphic")
+        fileName = ET.SubElement(mdBrowseGraphic, f"{{{ns_gmd}}}fileName")
+        charString = ET.SubElement(fileName, f"{{{ns_gco}}}CharacterString")
+        charString.text = thumbnail_url
 
-    # Intentar insertar la miniatura en el MD_DataIdentification
-    ci_citation = root.find(".//gmd:identificationInfo/gmd:MD_DataIdentification", namespaces)
-    if ci_citation is not None:
-        # graphicOverview debe ir antes de keywords/constraints/spatial/.../extent
-        graphic_blockers = [
-            "resourceFormat",
-            "descriptiveKeywords",
-            "resourceSpecificUsage",
-            "resourceConstraints",
-            "aggregationInfo",
-            "spatialRepresentationType",
-            "spatialResolution",
-            "language",
-            "characterSet",
-            "topicCategory",
-            "environmentDescription",
-            "extent",
-            "supplementalInformation",
-        ]
-        insert_before_first(ci_citation, graphicOverview, graphic_blockers)
-        print("Miniatura añadida a CI_Citation.")
+        # Intentar insertar la miniatura en el MD_DataIdentification
+        ci_citation = root.find(".//gmd:identificationInfo/gmd:MD_DataIdentification", namespaces)
+        if ci_citation is not None:
+            # graphicOverview debe ir antes de keywords/constraints/spatial/.../extent
+            graphic_blockers = [
+                "resourceFormat",
+                "descriptiveKeywords",
+                "resourceSpecificUsage",
+                "resourceConstraints",
+                "aggregationInfo",
+                "spatialRepresentationType",
+                "spatialResolution",
+                "language",
+                "characterSet",
+                "topicCategory",
+                "environmentDescription",
+                "extent",
+                "supplementalInformation",
+            ]
+            insert_before_first(ci_citation, graphicOverview, graphic_blockers)
+            print("Miniatura añadida a CI_Citation.")
+        else:
+            # Si no se encuentra, añadirla al final del XML
+            root.append(graphicOverview)
+            print("No se encontró CI_Citation; miniatura añadida al final del XML.")
     else:
-        # Si no se encuentra, añadirla al final del XML
-        root.append(graphicOverview)
-        print("No se encontró CI_Citation; miniatura añadida al final del XML.")
+        print("No se añade graphicOverview porque no hay thumbnail en upload_response.")
 
       # Guardar el XML actualizado localmente
     tree.write(str(output_file), encoding='utf-8', xml_declaration=True)

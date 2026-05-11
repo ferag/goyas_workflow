@@ -184,6 +184,30 @@ def update_xml_with_processing(xml_file, yaml_file, output_file):
             print("No se encontró gmd:MD_GridSpatialRepresentation o faltan x/y. No se actualiza resolución.")
 
     # -------------------------------------------------------------------------
+    # (2.1) FORMATO DE DISTRIBUCIÓN (distributionFormat / MD_Format / name)
+    # YAML:
+    # dataset:
+    #   resourceFormat: "GeoTIFF" | "NetCDF"
+    # -------------------------------------------------------------------------
+    dataset_cfg = config.get("dataset", {}) or {}
+    resource_format = dataset_cfg.get("resourceFormat")
+    if resource_format:
+        format_name_elems = root.findall(
+            ".//gmd:distributionInfo/gmd:MD_Distribution/"
+            "gmd:distributionFormat/gmd:MD_Format/gmd:name/gco:CharacterString",
+            namespaces,
+        )
+        if format_name_elems:
+            for elem in format_name_elems:
+                elem.text = str(resource_format)
+            print(f"Formato de distribución actualizado a: {resource_format}")
+        else:
+            print(
+                "No se encontró gmd:distributionFormat/gmd:MD_Format/gmd:name. "
+                "No se actualiza resourceFormat en distributionInfo."
+            )
+
+    # -------------------------------------------------------------------------
     # (3) PALABRAS CLAVE (keywords)
     # YAML:
     # keywords:

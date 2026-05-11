@@ -9,6 +9,17 @@ from boto3.s3.transfer import TransferConfig, S3Transfer
 import yaml
 import os
 from datetime import datetime, timezone
+from urllib.parse import quote
+
+
+def _optional_path(value):
+    if isinstance(value, (list, tuple)):
+        if not value:
+            return ""
+        value = value[0]
+    value = str(value or "").strip()
+    return value
+
 
 def _get_nested(config, *keys):
     current = config
@@ -17,6 +28,19 @@ def _get_nested(config, *keys):
             return None
         current = current.get(key)
     return current
+
+
+def _canonical_attachment_url(geonetwork_url, attachment_payload):
+    if not isinstance(attachment_payload, dict):
+        return ""
+    metadata_uuid = attachment_payload.get("metadataUuid")
+    filename = attachment_payload.get("filename")
+    if not metadata_uuid or not filename:
+        return attachment_payload.get("url", "")
+    return (
+        f"{str(geonetwork_url).rstrip('/')}/srv/api/records/"
+        f"{quote(str(metadata_uuid), safe='')}/attachments/{quote(str(filename))}"
+    )
 
 
 def upload_data(session_file, record_id_file, config, png_file_path, output_file):
@@ -57,16 +81,36 @@ def upload_data(session_file, record_id_file, config, png_file_path, output_file
     # URL para subir archivos asociados al record_id
     upload_url = f"{geonetwork_url}/srv/api/records/{record_id}/attachments"
 
-    # Subir el archivo PNG (miniatura)
-    with open(png_file_path, 'rb') as png_file:
-        files_png = {'file': png_file}
-        png_response = session.post(upload_url, files=files_png, headers=headers)
+    png_response_payload = {}
+    png_file_path = _optional_path(png_file_path)
+    if png_file_path:
+        # Subir el archivo PNG (miniatura)
+        with open(png_file_path, 'rb') as png_file:
+            files_png = {'file': png_file}
+            png_response = session.post(upload_url, files=files_png, headers=headers)
 
-    if png_response.status_code in [200, 201]:
-        print("PNG thumbnail subido correctamente")
+        if png_response.status_code in [200, 201]:
+            print("PNG thumbnail subido correctamente")
+            png_response_payload = png_response.json()
+            png_response_payload["url"] = _canonical_attachment_url(
+                geonetwork_url, png_response_payload
+            )
+            check_response = session.get(
+                png_response_payload["url"],
+                headers={"X-XSRF-TOKEN": xsrf_token},
+                timeout=30,
+            )
+            png_response_payload["url_check_status"] = check_response.status_code
+            if check_response.status_code != 200:
+                raise RuntimeError(
+                    "El thumbnail se subió, pero GeoNetwork no lo devuelve correctamente: "
+                    f"{png_response_payload['url']} ({check_response.status_code})"
+                )
+        else:
+            print(f"Error al asociar PNG: {png_response.text}")
+            sys.exit(1)
     else:
-        print(f"Error al asociar PNG: {png_response.text}")
-        sys.exit(1)
+        print("Generación/subida de thumbnail omitida por configuración.")
 
     # === CREAR CLIENTE S3 ===
     s3 = boto3.client(
@@ -127,7 +171,7 @@ def upload_data(session_file, record_id_file, config, png_file_path, output_file
     combined_response = {
         "tif_response": object_info,  # Mantener compatibilidad con scripts existentes.
         "data_response": object_info,
-        "png_response": png_response.json(),
+        "png_response": png_response_payload,
     }
     with open(output_file, 'w', encoding='utf-8') as f:
         f.write(json.dumps(combined_response, indent=4))

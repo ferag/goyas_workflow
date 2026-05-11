@@ -82,6 +82,16 @@ metadata:
       precision: 0.01
       reference: "Kratzer et al. (2014), https://doi.org/10.1016/j.rse.2014.06.019"
 
+  # --- Miniatura ---
+  thumbnail:
+    enabled: true
+    mode: "scalar"
+    colormap: "turbo"
+    band: 1
+    percentile_min: 2
+    percentile_max: 98
+    crop_to_data: true
+
 # SISTEMA DE REFERENCIA ESPACIAL
 crs:
   epsg: 32629

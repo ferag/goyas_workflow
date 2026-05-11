@@ -117,7 +117,13 @@ def extract_xsd_messages(payload, max_items=5):
     for report in reports:
         if not isinstance(report, dict):
             continue
-        if str(report.get("id", "")).lower() != "xsd":
+        report_id = str(report.get("id", "")).lower()
+        requirement = str(report.get("requirement", "")).upper()
+        try:
+            report_errors = int(report.get("error", 0))
+        except (TypeError, ValueError):
+            report_errors = 0
+        if report_id != "xsd" and not (requirement == "REQUIRED" and report_errors > 0):
             continue
         patterns = report.get("patterns", {}).get("pattern", [])
         if not isinstance(patterns, list):
@@ -126,16 +132,22 @@ def extract_xsd_messages(payload, max_items=5):
             if not isinstance(pattern, dict):
                 continue
             title = str(pattern.get("title", "")).strip()
-            if title:
-                messages.append(title)
+            pattern_messages = []
             rules = pattern.get("rules", {}).get("rule", [])
             if isinstance(rules, list):
                 for rule in rules:
                     if not isinstance(rule, dict):
                         continue
                     details = str(rule.get("details", "")).strip()
-                    if details:
-                        messages.append(details)
+                    msg = str(rule.get("msg", "")).strip()
+                    rule_type = str(rule.get("type", "")).lower()
+                    if rule_type == "error":
+                        pattern_messages.append(msg or details)
+                    elif report_id == "xsd" and details:
+                        pattern_messages.append(details)
+            if pattern_messages and title:
+                messages.append(title)
+            messages.extend(message for message in pattern_messages if message)
             if len(messages) >= max_items:
                 return messages[:max_items]
     return messages[:max_items]
@@ -184,7 +196,26 @@ def evaluate_schema_payload(payload):
         )
         return False, failures
 
-    return True, failures
+    for report in reports:
+        if not isinstance(report, dict):
+            continue
+        requirement = str(report.get("requirement", "")).upper()
+        report_id = str(report.get("id", ""))
+        if requirement != "REQUIRED":
+            continue
+        try:
+            report_errors = int(report.get("error", 0))
+        except (TypeError, ValueError):
+            continue
+        if report_errors > 0:
+            failures.append(
+                {
+                    "path": f"report.{report_id}.error",
+                    "reason": f"Se detectaron {report_errors} errores en reglas requeridas de GeoNetwork/ISO.",
+                }
+            )
+
+    return not failures, failures
 
 
 def validate_schema(config_file, session_file, record_id_file, upload_response_file, output_file):

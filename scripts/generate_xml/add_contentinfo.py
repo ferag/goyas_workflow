@@ -390,9 +390,13 @@ def add_data_quality(root, config):
 
         # Obtener la lista de procesos del YAML (se espera una lista de diccionarios en la clave "processing")
         processing_list = config.get("metadata").get("processing", [])
+        provenance = (config.get("metadata").get("provenance") or "").strip()
 
         # Para cada entrada en processing, construir y añadir la sección <gmd:lineage>
         for proc in processing_list:
+            if provenance and not (proc.get("notes") or "").strip():
+                proc = dict(proc)
+                proc["notes"] = provenance
             proc["_dq"] = dq_data_quality
             lineage_elem = build_lineage(proc)
 
