@@ -2,6 +2,7 @@
 #!/usr/bin/env python3
 import xml.etree.ElementTree as ET
 import json
+import re
 import sys
 import requests
 import yaml
@@ -13,6 +14,16 @@ namespaces = {
     'gmi': "http://www.isotc211.org/2005/gmi",
     'gml': 'http://www.opengis.net/gml/3.2'
 }
+
+
+def collapse_duplicate_path_segments(url):
+    """Colapsa segmentos de ruta repetidos consecutivos en una URL, p.ej.
+    '.../geonetwork/geonetwork/srv/...' -> '.../geonetwork/srv/...'.
+    GeoNetwork devuelve la URL del attachment con el context path duplicado
+    cuando su base URL está mal configurada, y eso rompe la miniatura."""
+    if not url:
+        return url
+    return re.sub(r'/([^/?#]+)/\1(?=[/?#]|$)', r'/\1', url)
 
 
 def insert_before_first(md_data_id, new_elem, ordered_localnames):
@@ -129,8 +140,10 @@ def update_metadata(xml_file, record_id, combined_response, output_file, wms_url
     mdBrowseGraphic = ET.SubElement(graphicOverview, f"{{{ns_gmd}}}MD_BrowseGraphic")
     fileName = ET.SubElement(mdBrowseGraphic, f"{{{ns_gmd}}}fileName")
     charString = ET.SubElement(fileName, f"{{{ns_gco}}}CharacterString")
-    # Asigna la URL proveniente de png_response
-    charString.text = combined_response.get('png_response', {}).get('url', '')
+    # Asigna la URL proveniente de png_response, saneando un posible context
+    # path duplicado (".../geonetwork/geonetwork/...") que rompe la miniatura.
+    png_url = combined_response.get('png_response', {}).get('url', '')
+    charString.text = collapse_duplicate_path_segments(png_url)
 
     # Intentar insertar la miniatura en el MD_DataIdentification
     ci_citation = root.find(".//gmd:identificationInfo/gmd:MD_DataIdentification", namespaces)
