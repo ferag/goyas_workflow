@@ -6,6 +6,7 @@ import json
 import rasterio
 from rasterio.warp import transform_bounds
 import unicodedata
+import re
 
 def eliminar_acentos(texto):
     # Descompone los caracteres (la 'é' se convierte en 'e' + '´')
@@ -14,6 +15,12 @@ def eliminar_acentos(texto):
     solo_ascii = "".join([c for c in forma_nfkd if not unicodedata.combining(c)])
     return solo_ascii
 
+def sanitizar_nombre(texto):
+    # Nombre apto para GeoServer: sin acentos, espacios ni caracteres
+    # especiales (solo [A-Za-z0-9_]).
+    base = re.sub(r"[^A-Za-z0-9]+", "_", eliminar_acentos(texto)).strip("_")
+    return base or "coverage"
+
 def create_coverage_store(yaml_file, output_file):
     # Parámetros de conexión y configuración
     with open(yaml_file, 'r', encoding='utf-8') as f:
@@ -21,7 +28,11 @@ def create_coverage_store(yaml_file, output_file):
 
     geoserver_url = config.get("services")['geoserver']['url']
     workspace = config.get("services")['geoserver']['workspace']
-    coveragestore = eliminar_acentos(config.get("metadata").get("title"))[0:10]
+    # Nombre del coveragestore derivado del identificador de la escena: único
+    # y sin caracteres problemáticos. Antes se usaba title[0:10], que truncaba
+    # el título y dejaba nombres con espacios como "Mascara de".
+    metadata = config.get("metadata") or {}
+    coveragestore = sanitizar_nombre(metadata.get("identifier") or metadata.get("title") or "coverage")
     style = config.get("services")['geoserver']["style"]
     username = config.get("services")['geoserver']['username']
     password = config.get("services")['geoserver']['password']
@@ -294,7 +305,7 @@ def create_coverage_store(yaml_file, output_file):
 
 
     with open(str(output_file), 'w', encoding='utf-8') as f:
-        ogc_url = f"https://goyas.csic.es/geoserver/{workspace}/ows?SERVICE=WMS&SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities&FORMAT=image%2Fpng&TRANSPARENT=true&LAYERS={coveragestore}1&STYLES=&CRS=EPSG%3A3857&WIDTH=2040&HEIGHT=892&BBOX={bounds.left}%2C{bounds.bottom}%2C{bounds.right}%2C{bounds.top}&width=768&height=448&srs=EPSG%3A4326"
+        ogc_url = f"https://goyas.csic.es/geoserver/{workspace}/ows?SERVICE=WMS&SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities&FORMAT=image%2Fpng&TRANSPARENT=true&LAYERS={workspace}%3A{coveragestore}&STYLES=&CRS=EPSG%3A3857&WIDTH=2040&HEIGHT=892&BBOX={bounds.left}%2C{bounds.bottom}%2C{bounds.right}%2C{bounds.top}&width=768&height=448&srs=EPSG%3A4326"
         f.write(ogc_url)
 
 if __name__ == "__main__":

@@ -173,7 +173,7 @@ def run_fair_eva_validation(config_file, upload_response_file, record_id_file, m
         raise RuntimeError(
             "No se pudo importar el plugin FAIR-EVA de GOYAS. "
             "Instala la dependencia en el entorno del workflow, por ejemplo: "
-            "'pip install git+https://github.com/IFCA-Advanced-Computing/fair_eva_plugin_goyas'"
+            "'pip install git+https://github.com/ferag/fair-eva-plugin-goyas'"
         ) from exc
 
     config_data = plugin_module.Plugin.load_config(plugin_path)

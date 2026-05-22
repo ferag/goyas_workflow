@@ -96,30 +96,34 @@ def upload_data(session_file, record_id_file, config, png_file_path, output_file
             sys.stdout.flush()
 
     # === SUBIDA A S3 ===
-    ts_dt = datetime.now(timezone.utc) 
+    ts_dt = datetime.now(timezone.utc)
     ts = ts_dt.isoformat()
+    # Clave del objeto en S3: timestamp + nombre de fichero (basename). Antes se
+    # concatenaba la ruta local completa, generando claves como
+    # "<ts>_/home/user/.../flood.tif".
+    object_key = ts + "_" + os.path.basename(local_file)
     transfer = S3Transfer(client=s3, config=tfr_cfg)
     transfer.upload_file(
         local_file,
         bucket_name,
-        ts + "_" + local_file,
+        object_key,
         callback=ProgressPercentage(local_file),
         extra_args={'ACL': 'public-read'}
     )
     print("\n✅ Subida de TIFF completada.")
-    
+
 
     # Generar URL firmada (1 hora)
     signed_url = s3.generate_presigned_url(
         'get_object',
-        Params={'Bucket': bucket_name, 'Key': ts + "_" + local_file},
+        Params={'Bucket': bucket_name, 'Key': object_key},
         ExpiresIn=3600
     )
     print(f"🔐 URL firmada (1 h): {signed_url}")
 
     # Guardar las respuestas combinadas en un archivo JSON
     combined_response = {
-        "tif_response": {"url": f"https://portal.cloud.ifca.es/api/swift/containers/{bucket_name}/object/{ts}_{local_file}", "filename": ts + "_" + local_file},
+        "tif_response": {"url": f"https://portal.cloud.ifca.es/api/swift/containers/{bucket_name}/object/{object_key}", "filename": object_key},
         "png_response": png_response.json()
     }
     with open(output_file, 'w', encoding='utf-8') as f:
