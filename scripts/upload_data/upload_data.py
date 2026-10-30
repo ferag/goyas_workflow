@@ -123,7 +123,7 @@ def upload_data(session_file, record_id_file, config, png_file_path, output_file
 
     # Guardar las respuestas combinadas en un archivo JSON
     combined_response = {
-        "tif_response": {"url": f"https://portal.cloud.ifca.es/api/swift/containers/{bucket_name}/object/{object_key}", "filename": object_key},
+        "tif_response": {"url": f"{endpoint_url.rstrip('/')}/swift/v1/{bucket_name}/{object_key}", "filename": object_key},
         "png_response": png_response.json()
     }
     with open(output_file, 'w', encoding='utf-8') as f:
