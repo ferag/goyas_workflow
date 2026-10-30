@@ -2,6 +2,7 @@
 #!/usr/bin/env python3
 import xml.etree.ElementTree as ET
 import json
+import os
 import re
 import sys
 import requests
@@ -47,6 +48,19 @@ def registrar_espacios_de_nombres(xml_file):
         except ValueError as e:
             # Si el prefijo está reservado, se salta
             print(f"Skipping reserved namespace prefix: {prefix} -> {uri} ({e})")
+
+def get_data_file_size_mb(config):
+    # Use the same local source as upload_data.py, including its legacy fallback.
+    local_file = (config.get('dataset') or {}).get('file') or config.get('file')
+    try:
+        size_bytes = os.path.getsize(local_file)
+    except (OSError, TypeError, ValueError) as exc:
+        print(f"Warning: Cannot determine data file size for {local_file!r}: {exc}; "
+              "omitting gmd:transferSize.", file=sys.stderr)
+        return None
+    size_mb = f"{size_bytes / (1024 * 1024):.2f}"
+    print(f"Data file size: {size_mb} MiB ({size_bytes} bytes)")
+    return size_mb
 
 def update_metadata(xml_file, record_id, combined_response, output_file, wms_url, yaml_file, session_file):
 
@@ -119,11 +133,26 @@ def update_metadata(xml_file, record_id, combined_response, output_file, wms_url
         print("No se encontró <gmd:fileIdentifier>")
 
     # Actualizar recursos en línea existentes para FILE y OGC
+    # Identify the owning transfer options before replacing the FILE placeholder.
+    download_transfers = {
+        resource: transfer
+        for transfer in root.findall('.//gmd:MD_DigitalTransferOptions', namespaces)
+        for resource in transfer.findall('gmd:onLine/gmd:CI_OnlineResource', namespaces)
+    }
+    size_mb = get_data_file_size_mb(config)
     online_resources = root.findall('.//gmd:CI_OnlineResource', namespaces)
     for resource in online_resources:
         resource_url = resource.find('.//gmd:URL', namespaces)
         if resource_url is not None:
             if resource_url.text == 'FILE':
+                transfer = download_transfers.get(resource)
+                if transfer is not None:
+                    for existing in transfer.findall('gmd:transferSize', namespaces):
+                        transfer.remove(existing)
+                    if size_mb is not None:
+                        transfer_size = ET.Element(f"{{{namespaces['gmd']}}}transferSize")
+                        ET.SubElement(transfer_size, f"{{{namespaces['gco']}}}Real").text = size_mb
+                        insert_before_first(transfer, transfer_size, ['onLine', 'offLine'])
                 print(combined_response.get('tif_response', {}).get('url', ''))
                 resource_url.text = combined_response.get('tif_response', {}).get('url', '')
                 name_elem = resource.find('.//gmd:name', namespaces)
